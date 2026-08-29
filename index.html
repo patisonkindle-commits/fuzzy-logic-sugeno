@@ -390,6 +390,10 @@ mon.offsets = mon.patterns.map(p=>({x:mon.x+p.x, y:mon.y+p.y}));
 
 let fd = { dMelee:0, dOR:0, dUn:0, dHard:0, dAtt:0, dDn:0, dFl:0, output:0 };
 
+// Player combat
+let playerAtk = { cooldown: 0, damage: 8, range: 60, lastHit: 0 };
+let attackEffects = []; // {x,y,timer}
+
 // Input
 const keys={};
 document.addEventListener('keydown',e=>{
@@ -565,6 +569,26 @@ function drawGame(){
   ctx.beginPath();ctx.moveTo(16,4);ctx.lineTo(6,3);ctx.stroke();
   ctx.restore();
 
+  // Attack range indicator
+  if(mon.dist <= playerAtk.range) {
+    ctx.beginPath();ctx.arc(player.x,player.y,playerAtk.range,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,255,100,0.25)';ctx.lineWidth=1.5;ctx.stroke();
+  }
+  // Attack cooldown indicator
+  if(playerAtk.lastHit > 0) {
+    playerAtk.lastHit--;
+    const pct = 1 - playerAtk.cooldown/30;
+    ctx.beginPath();ctx.arc(player.x,player.y,22,-Math.PI/2,-Math.PI/2+Math.PI*2*pct);
+    ctx.strokeStyle='rgba(255,80,80,0.6)';ctx.lineWidth=2.5;ctx.stroke();
+  }
+  // Damage numbers
+  attackEffects.forEach(e => {
+    ctx.globalAlpha = e.timer/20;
+    ctx.fillStyle='#ff4444';ctx.font='bold 12px monospace';ctx.textAlign='center';
+    ctx.fillText(`-${e.dmg}`, e.x, e.y);
+    ctx.globalAlpha=1;
+  });
+
   // HUD
   const hL=document.getElementById('hudLeft');
   hL.innerHTML=`<span class="lbl">Player</span> <span class="val">(${Math.round(player.x)},${Math.round(player.y)})</span> <span class="lbl">Power</span> <span class="val">${powerUp?'ON':'OFF'}</span><br>`+
@@ -598,6 +622,24 @@ function loop(){
   if(keys['s']||keys['S'])player.y+=playerSpd.y;
 
   monsterUpdate();
+
+  // Player auto-attack when in range
+  if(playerAtk.cooldown > 0) playerAtk.cooldown--;
+  if(mon.dist <= playerAtk.range && playerAtk.cooldown <= 0) {
+    mon.hp -= playerAtk.damage;
+    playerAtk.cooldown = 30; // ~0.5s at 60fps
+    playerAtk.lastHit = 30;
+    attackEffects.push({x:mon.x, y:mon.y-20, timer:20, dmg:playerAtk.damage});
+    if(mon.hp < 0) mon.hp = 0;
+    if(mon.hp === 0) {
+      // Monster defeated — respawn
+      mon.hp = 160;
+      mon.x = Math.random()*W; mon.y = Math.random()*H;
+      mon.offsets = mon.patterns.map(p=>({x:mon.x+p.x, y:mon.y+p.y}));
+    }
+  }
+  // Update attack effects
+  attackEffects = attackEffects.filter(e => { e.timer--; e.y -= 1; return e.timer > 0; });
 
   if(player.x<-10||player.x>W+10||player.y<-10||player.y>H+10)
     player={x:Math.random()*W,y:Math.random()*H};
