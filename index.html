@@ -14,7 +14,7 @@
   body { background: var(--bg); color: var(--text); font-family: 'Consolas', 'SF Mono', monospace; overflow: hidden; height: 100vh; }
 
   /* Layout */
-  #app { display: grid; grid-template-columns: 1fr 280px; grid-template-rows: 1fr auto; height: 100vh; gap: 0; }
+  #app { display: grid; grid-template-columns: 1fr 360px; grid-template-rows: 1fr auto; height: 100vh; gap: 0; }
   #app.sidebar-collapsed { grid-template-columns: 1fr 0px; }
   #app.inference-collapsed { grid-template-rows: 1fr 0px; }
   #app.sidebar-collapsed.inference-collapsed { grid-template-rows: 1fr 0px; }
@@ -33,7 +33,7 @@
   #toggleSidebar { top: 8px; right: 8px; }
   #toggleInference { bottom: 8px; right: 8px; }
   #app.sidebar-collapsed #toggleSidebar { right: 8px; }
-  #app:not(.sidebar-collapsed) #toggleSidebar { right: 288px; }
+  #app:not(.sidebar-collapsed) #toggleSidebar { right: 368px; }
 
   /* Right sidebar */
   #sidebar {
@@ -105,17 +105,17 @@
   <div id="sidebar">
     <div class="side-panel">
       <h3>Range</h3>
-      <canvas id="gRange" width="260" height="110"></canvas>
+      <canvas id="gRange" width="340" height="110"></canvas>
       <div class="side-legend" id="lRange"></div>
     </div>
     <div class="side-panel">
       <h3>Health</h3>
-      <canvas id="gHealth" width="260" height="110"></canvas>
+      <canvas id="gHealth" width="340" height="110"></canvas>
       <div class="side-legend" id="lHealth"></div>
     </div>
     <div class="side-panel">
       <h3>Rating</h3>
-      <canvas id="gRating" width="260" height="110"></canvas>
+      <canvas id="gRating" width="340" height="110"></canvas>
       <div class="side-legend" id="lRating"></div>
     </div>
     <div class="side-panel" style="flex:1; min-height:80px;">
