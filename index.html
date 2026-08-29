@@ -18,6 +18,13 @@
   #app.sidebar-collapsed { grid-template-columns: 1fr 0px; }
   #app.inference-collapsed { grid-template-rows: 1fr 0px; }
   #app.sidebar-collapsed.inference-collapsed { grid-template-rows: 1fr 0px; }
+  @media (max-width: 768px) {
+    #app { grid-template-columns: 1fr !important; }
+    #app.sidebar-collapsed { grid-template-columns: 1fr !important; }
+    #sidebar { position: fixed; right: 0; top: 0; bottom: 0; width: 280px; z-index: 50; transform: translateX(0); transition: transform 0.2s; }
+    #app.sidebar-collapsed #sidebar { transform: translateX(100%); width: 280px; }
+    #toggleSidebar { right: 8px !important; }
+  }
 
   /* Game area */
   #game-wrap { position: relative; overflow: hidden; background: #0a0a1a; }
@@ -360,6 +367,8 @@ function resize() {
 }
 resize();
 window.addEventListener('resize', resize);
+// Auto-collapse sidebar on mobile
+if(window.innerWidth <= 768) document.getElementById('app').classList.add('sidebar-collapsed');
 
 // Entities
 let player = { x: Math.random()*800+50, y: Math.random()*500+50 };
