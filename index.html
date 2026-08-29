@@ -96,7 +96,7 @@
       <div class="hud-box" id="hudLeft"></div>
       <div class="hud-box" id="hudRight"></div>
     </div>
-    <div id="ctrl-hint"><kbd>←↑↓→</kbd> Move &nbsp; <kbd>1</kbd> Power↑Lv↑ &nbsp; <kbd>2</kbd> Power↓Lv↓ &nbsp; <kbd>3</kbd> HP− &nbsp; <kbd>4</kbd> HP+</div>
+    <div id="ctrl-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp; <kbd>1</kbd> Power↑Lv↑ &nbsp; <kbd>2</kbd> Power↓Lv↓ &nbsp; <kbd>3</kbd> HP− &nbsp; <kbd>4</kbd> HP+</div>
     <button class="toggle-btn" id="toggleSidebar">◀ Panels</button>
     <button class="toggle-btn" id="toggleInference">▲ Rules</button>
   </div>
@@ -335,7 +335,7 @@ let fd = { dMelee:0, dOR:0, dUn:0, dHard:0, dAtt:0, dDn:0, dFl:0, output:0 };
 // Input
 const keys={};
 document.addEventListener('keydown',e=>{
-  if(['1','2','3','4','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))e.preventDefault();
+  if(['1','2','3','4','w','a','s','d','W','A','S','D'].includes(e.key))e.preventDefault();
   if(['1','2','3','4'].includes(e.key)&&!keys[e.key])handleKey(e.key);
   keys[e.key]=true;
 });
@@ -515,10 +515,10 @@ function drawLiveValues(){
 // ========== MAIN LOOP ==========
 function loop(){
   // Player movement
-  if(keys['ArrowLeft'])player.x-=playerSpd.x;
-  if(keys['ArrowRight'])player.x+=playerSpd.x;
-  if(keys['ArrowUp'])player.y-=playerSpd.y;
-  if(keys['ArrowDown'])player.y+=playerSpd.y;
+  if(keys['a']||keys['A'])player.x-=playerSpd.x;
+  if(keys['d']||keys['D'])player.x+=playerSpd.x;
+  if(keys['w']||keys['W'])player.y-=playerSpd.y;
+  if(keys['s']||keys['S'])player.y+=playerSpd.y;
 
   monsterUpdate();
 
