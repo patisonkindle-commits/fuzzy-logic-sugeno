@@ -138,7 +138,7 @@
       <div class="hud-box" id="hudRight"></div>
     </div>
     <div id="ctrl-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp; <kbd>1</kbd> Power↑Lv↑ &nbsp; <kbd>2</kbd> Power↓Lv↓ &nbsp; <kbd>3</kbd> HP− &nbsp; <kbd>4</kbd> HP+</div>
-    <button class="toggle-btn" id="toggleSidebar">◀ Panels</button>
+    <button class="toggle-btn" id="toggleSidebar">▶ Panels</button>
     <button class="toggle-btn" id="toggleInference">▲ Rules</button>
   </div>
 
@@ -156,6 +156,9 @@
     <button class="action-btn" data-key="4">4</button>
   </div>
 
+  <!-- Floating live values (always visible) -->
+  <div id="liveValues" style="position:fixed;top:50px;left:12px;z-index:25;background:rgba(10,10,26,0.88);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:10px;line-height:1.7;pointer-events:none;"></div>
+
   <!-- Right sidebar: membership graphs -->
   <div id="sidebar">
     <div class="side-panel">
@@ -172,10 +175,6 @@
       <h3>Rating</h3>
       <canvas id="gRating" width="340" height="110"></canvas>
       <div class="side-legend" id="lRating"></div>
-    </div>
-    <div class="side-panel" style="flex:1; min-height:80px;">
-      <h3>Fuzzy Values</h3>
-      <div id="liveValues" style="font-size:10px; line-height:1.7;"></div>
     </div>
   </div>
 
@@ -369,11 +368,10 @@ function resize() {
 }
 resize();
 window.addEventListener('resize', resize);
-// Auto-collapse sidebar on mobile, then resize
-if(window.innerWidth <= 768) {
-  document.getElementById('app').classList.add('sidebar-collapsed');
-  requestAnimationFrame(resize);
-}
+// Sidebar collapsed by default (all devices)
+document.getElementById('app').classList.add('sidebar-collapsed');
+// Inference collapsed by default
+document.getElementById('app').classList.add('inference-collapsed');
 
 // Entities
 let player = { x: Math.random()*800+50, y: Math.random()*500+50 };
@@ -424,11 +422,15 @@ function handleKey(k){
 
 // Toggle buttons
 document.getElementById('toggleSidebar').addEventListener('click',()=>{
-  document.getElementById('app').classList.toggle('sidebar-collapsed');
+  const app=document.getElementById('app');
+  app.classList.toggle('sidebar-collapsed');
+  document.getElementById('toggleSidebar').textContent=app.classList.contains('sidebar-collapsed')?'▶ Panels':'◀ Panels';
   setTimeout(resize,250);
 });
 document.getElementById('toggleInference').addEventListener('click',()=>{
-  document.getElementById('app').classList.toggle('inference-collapsed');
+  const app=document.getElementById('app');
+  app.classList.toggle('inference-collapsed');
+  document.getElementById('toggleInference').textContent=app.classList.contains('inference-collapsed')?'▲ Rules':'▼ Rules';
   setTimeout(resize,250);
 });
 
