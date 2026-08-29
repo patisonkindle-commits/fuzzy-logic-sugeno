@@ -3,620 +3,534 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fuzzy Logic Sugeno - AI Monster</title>
+<title>Fuzzy Logic Sugeno — AI Monster</title>
 <style>
+  :root {
+    --bg: #0d0d1a; --panel: #13132a; --border: #2a2a4a;
+    --text: #c8cce0; --dim: #7a7ea0; --accent: #6ec6ff;
+    --red: #ff5555; --green: #44dd66; --blue: #44aaff; --orange: #ffaa44;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #111122; color: #e0e0e0; font-family: 'Segoe UI', Arial, sans-serif; padding: 12px; }
-  h1 { text-align: center; margin-bottom: 10px; font-size: 20px; color: #7ec8e3; }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
-  .panel { background: #1a1a2e; border: 1px solid #333355; border-radius: 6px; padding: 10px; }
-  .panel h3 { font-size: 13px; color: #7ec8e3; margin-bottom: 6px; text-align: center; }
-  #game { display: block; }
-  .graphs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-  .graph-panel canvas { display: block; }
-  #inference { margin-top: 10px; }
-  #inference canvas { display: block; }
-  .legend { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
-  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #aaa; }
-  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
-  #controls { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
-  .ctrl { background: #1a1a2e; border: 1px solid #333355; border-radius: 4px; padding: 5px 10px; text-align: center; font-size: 12px; }
-  kbd { background: #2a2a4a; border: 1px solid #4a4a6a; border-radius: 2px; padding: 1px 4px; font-size: 11px; color: #ccc; }
+  body { background: var(--bg); color: var(--text); font-family: 'Consolas', 'SF Mono', monospace; overflow: hidden; height: 100vh; }
+
+  /* Layout */
+  #app { display: grid; grid-template-columns: 1fr 280px; grid-template-rows: 1fr auto; height: 100vh; gap: 0; }
+  #app.sidebar-collapsed { grid-template-columns: 1fr 0px; }
+  #app.inference-collapsed { grid-template-rows: 1fr 0px; }
+  #app.sidebar-collapsed.inference-collapsed { grid-template-rows: 1fr 0px; }
+
+  /* Game area */
+  #game-wrap { position: relative; overflow: hidden; background: #0a0a1a; }
+  #game { display: block; width: 100%; height: 100%; }
+
+  /* Toggle buttons */
+  .toggle-btn {
+    position: absolute; z-index: 10; background: rgba(19,19,42,0.85); border: 1px solid var(--border);
+    color: var(--dim); cursor: pointer; font-size: 11px; font-family: inherit; padding: 3px 8px; border-radius: 3px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
+  #toggleSidebar { top: 8px; right: 8px; }
+  #toggleInference { bottom: 8px; right: 8px; }
+  #app.sidebar-collapsed #toggleSidebar { right: 8px; }
+  #app:not(.sidebar-collapsed) #toggleSidebar { right: 288px; }
+
+  /* Right sidebar */
+  #sidebar {
+    background: var(--panel); border-left: 1px solid var(--border); overflow-y: auto;
+    padding: 8px; display: flex; flex-direction: column; gap: 6px;
+    transition: width 0.2s;
+  }
+  #app.sidebar-collapsed #sidebar { width: 0; overflow: hidden; padding: 0; border: none; }
+  .side-panel { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 4px; padding: 6px; }
+  .side-panel h3 { font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .side-panel canvas { display: block; width: 100%; }
+  .side-legend { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; }
+  .side-legend span { font-size: 9px; color: var(--dim); display: flex; align-items: center; gap: 3px; }
+  .side-legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+  /* Bottom inference bar */
+  #inference-bar {
+    background: var(--panel); border-top: 1px solid var(--border); padding: 6px 12px;
+    display: flex; align-items: center; gap: 16px; overflow-x: auto;
+  }
+  #app.inference-collapsed #inference-bar { height: 0; padding: 0; overflow: hidden; border: none; }
+  #inference-canvas { flex-shrink: 0; }
+
+  /* HUD overlay on game */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0; pointer-events: none;
+    display: flex; justify-content: space-between; padding: 8px 12px;
+  }
+  .hud-box {
+    background: rgba(10,10,26,0.75); border: 1px solid var(--border); border-radius: 4px;
+    padding: 6px 10px; font-size: 11px; line-height: 1.5; backdrop-filter: blur(4px);
+  }
+  .hud-box .val { color: #fff; }
+  .hud-box .lbl { color: var(--dim); }
+  .state-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 3px;
+    font-weight: bold; font-size: 12px; margin-left: 6px;
+  }
+  .state-CHASE { background: var(--red); color: #fff; }
+  .state-IDLE { background: var(--blue); color: #fff; }
+  .state-EVADE { background: var(--green); color: #000; }
+  .state-DIE { background: #666; color: #fff; }
+
+  /* Controls hint */
+  #ctrl-hint {
+    position: absolute; bottom: 8px; left: 12px; pointer-events: none;
+    font-size: 10px; color: var(--dim); background: rgba(10,10,26,0.7);
+    padding: 4px 8px; border-radius: 3px;
+  }
+  kbd { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 2px; padding: 0 3px; font-size: 10px; }
 </style>
 </head>
 <body>
-<h1>Fuzzy Logic Sugeno — AI Monster Behavior</h1>
 
-<div class="row">
-  <div class="panel">
-    <canvas id="game" width="720" height="540"></canvas>
+<div id="app">
+  <!-- Game Canvas -->
+  <div id="game-wrap">
+    <canvas id="game"></canvas>
+    <div id="hud">
+      <div class="hud-box" id="hudLeft"></div>
+      <div class="hud-box" id="hudRight"></div>
+    </div>
+    <div id="ctrl-hint"><kbd>←↑↓→</kbd> Move &nbsp; <kbd>1</kbd> Power↑Lv↑ &nbsp; <kbd>2</kbd> Power↓Lv↓ &nbsp; <kbd>3</kbd> HP− &nbsp; <kbd>4</kbd> HP+</div>
+    <button class="toggle-btn" id="toggleSidebar">◀ Panels</button>
+    <button class="toggle-btn" id="toggleInference">▲ Rules</button>
   </div>
-</div>
 
-<div class="row graphs">
-  <div class="panel">
-    <h3>Range Membership</h3>
-    <canvas id="graphRange" width="320" height="160"></canvas>
-    <div class="legend" id="legendRange"></div>
+  <!-- Right sidebar: membership graphs -->
+  <div id="sidebar">
+    <div class="side-panel">
+      <h3>Range</h3>
+      <canvas id="gRange" width="260" height="110"></canvas>
+      <div class="side-legend" id="lRange"></div>
+    </div>
+    <div class="side-panel">
+      <h3>Health</h3>
+      <canvas id="gHealth" width="260" height="110"></canvas>
+      <div class="side-legend" id="lHealth"></div>
+    </div>
+    <div class="side-panel">
+      <h3>Rating</h3>
+      <canvas id="gRating" width="260" height="110"></canvas>
+      <div class="side-legend" id="lRating"></div>
+    </div>
+    <div class="side-panel" style="flex:1; min-height:80px;">
+      <h3>Fuzzy Values</h3>
+      <div id="liveValues" style="font-size:10px; line-height:1.7;"></div>
+    </div>
   </div>
-  <div class="panel">
-    <h3>Health Membership</h3>
-    <canvas id="graphHealth" width="320" height="160"></canvas>
-    <div class="legend" id="legendHealth"></div>
-  </div>
-  <div class="panel">
-    <h3>Rating Membership</h3>
-    <canvas id="graphRating" width="320" height="160"></canvas>
-    <div class="legend" id="legendRating"></div>
-  </div>
-</div>
 
-<div class="row">
-  <div class="panel" style="width:100%;">
-    <h3>Fuzzy Inference (Sugeno Output)</h3>
-    <canvas id="inference" width="980" height="200"></canvas>
+  <!-- Bottom: inference -->
+  <div id="inference-bar">
+    <canvas id="inference-canvas" width="1100" height="80"></canvas>
   </div>
-</div>
-
-<div id="controls">
-  <div class="ctrl"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> Move</div>
-  <div class="ctrl"><kbd>1</kbd> Power↑ Level↑</div>
-  <div class="ctrl"><kbd>2</kbd> Power↓ Level↓</div>
-  <div class="ctrl"><kbd>3</kbd> HP−1</div>
-  <div class="ctrl"><kbd>4</kbd> HP+1</div>
 </div>
 
 <script>
-// ========== FUZZY LOGIC CORE ==========
-class FuzzyLogic {
-  FuzzyGrade(v, x0, x1) {
-    if (v <= x0) return 0;
-    if (v >= x1) return 1;
-    return (v - x0) / (x1 - x0);
-  }
-  FuzzyReverseGrade(v, x0, x1) {
-    if (v <= x0) return 1;
-    if (v >= x1) return 0;
-    return (x1 - v) / (x1 - x0);
-  }
-  FuzzyTriangle(v, x0, x1, x2) {
-    if (v <= x0 || v >= x2) return 0;
-    if (v === x1) return 1;
-    return v < x1 ? (v - x0) / (x1 - x0) : (x2 - v) / (x2 - x1);
-  }
-  FuzzyTrapezoid(v, x0, x1, x2, x3) {
-    if (v <= x0 || v >= x3) return 0;
-    if (v >= x1 && v <= x2) return 1;
-    if (v > x0 && v < x1) return (v - x0) / (x1 - x0);
-    return (x3 - v) / (x3 - x2);
-  }
-  FuzzyAND(A, B) { return Math.min(A, B); }
-  FuzzyOR(A, B) { return Math.max(A, B); }
-  FuzzyNOT(A) { return 1.0 - A; }
-}
+// ========== FUZZY CORE ==========
+const fl = {
+  Grade: (v,x0,x1) => v<=x0?0:v>=x1?1:(v-x0)/(x1-x0),
+  RGrade: (v,x0,x1) => v<=x0?1:v>=x1?0:(x1-v)/(x1-x0),
+  Trap: (v,x0,x1,x2,x3) => v<=x0||v>=x3?0:v>=x1&&v<=x2?1:v>x0&&v<x1?(v-x0)/(x1-x0):(x3-v)/(x3-x2),
+  AND: (a,b) => Math.min(a,b),
+  NOT: (a) => 1-a
+};
 
-// ========== MEMBERSHIP DEFINITIONS ==========
-const fl = new FuzzyLogic();
-
+// ========== MEMBERSHIP DEFS ==========
 const rangeDefs = [
-  { name: 'Melee',      color: '#ff6666', fn: x => fl.FuzzyReverseGrade(x, 0, 400) },
-  { name: 'Projectile',  color: '#ffaa44', fn: x => fl.FuzzyTrapezoid(x, 80, 160, 320, 400) },
-  { name: 'OutOfRange',  color: '#44aaff', fn: x => fl.FuzzyGrade(x, 320, 400) }
+  { n:'Melee', c:'#ff5555', fn: x => fl.RGrade(x, 0, 400) },
+  { n:'Projectile', c:'#ffaa44', fn: x => fl.Trap(x, 80, 160, 320, 400) },
+  { n:'OutOfRange', c:'#44aaff', fn: x => fl.Grade(x, 320, 400) }
 ];
-
 const healthDefs = [
-  { name: 'NearDeath', color: '#ff2222', fn: x => fl.FuzzyReverseGrade(x, 0, 40) },
-  { name: 'Critical',  color: '#ff6622', fn: x => fl.FuzzyTrapezoid(x, 20, 40, 60, 80) },
-  { name: 'Serious',   color: '#ffaa22', fn: x => fl.FuzzyTrapezoid(x, 60, 80, 100, 120) },
-  { name: 'Minor',     color: '#44cc44', fn: x => fl.FuzzyTrapezoid(x, 100, 120, 140, 160) },
-  { name: 'Uninjured',  color: '#22ffaa', fn: x => fl.FuzzyGrade(x, 140, 160) }
+  { n:'NearDeath', c:'#ff2222', fn: x => fl.RGrade(x, 0, 40) },
+  { n:'Critical', c:'#ff6622', fn: x => fl.Trap(x, 20, 40, 60, 80) },
+  { n:'Serious', c:'#ffaa22', fn: x => fl.Trap(x, 60, 80, 100, 120) },
+  { n:'Minor', c:'#44cc44', fn: x => fl.Trap(x, 100, 120, 140, 160) },
+  { n:'Uninjured', c:'#22ffaa', fn: x => fl.Grade(x, 140, 160) }
 ];
-
 const ratingDefs = [
-  { name: 'Wimp',     color: '#8888ff', fn: x => fl.FuzzyReverseGrade(x, 0, 20) },
-  { name: 'Easy',     color: '#44cc44', fn: x => fl.FuzzyTrapezoid(x, 10, 20, 30, 40) },
-  { name: 'Moderate', color: '#ffaa22', fn: x => fl.FuzzyTrapezoid(x, 30, 40, 50, 60) },
-  { name: 'Hard',     color: '#ff4444', fn: x => fl.FuzzyGrade(x, 50, 60) }
+  { n:'Wimp', c:'#7777ff', fn: x => fl.RGrade(x, 0, 20) },
+  { n:'Easy', c:'#44cc44', fn: x => fl.Trap(x, 10, 20, 30, 40) },
+  { n:'Moderate', c:'#ffaa22', fn: x => fl.Trap(x, 30, 40, 50, 60) },
+  { n:'Hard', c:'#ff4444', fn: x => fl.Grade(x, 50, 60) }
 ];
 
-// ========== GRAPH DRAWING ==========
-function drawMembershipGraph(canvasId, defs, xMax, currentValue) {
+// Build legends
+function buildLegend(id, defs) {
+  document.getElementById(id).innerHTML = defs.map(d =>
+    `<span><i style="background:${d.c}"></i>${d.n}</span>`).join('');
+}
+buildLegend('lRange', rangeDefs);
+buildLegend('lHealth', healthDefs);
+buildLegend('lRating', ratingDefs);
+
+// ========== SMALL GRAPH ==========
+function drawSmallGraph(canvasId, defs, xMax, current) {
   const c = document.getElementById(canvasId);
   const ctx = c.getContext('2d');
   const W = c.width, H = c.height;
-  const padL = 36, padR = 10, padT = 10, padB = 22;
-  const gw = W - padL - padR, gh = H - padT - padB;
-
-  ctx.clearRect(0, 0, W, H);
+  const pL=28, pR=4, pT=4, pB=14;
+  const gw=W-pL-pR, gh=H-pT-pB;
+  ctx.clearRect(0,0,W,H);
 
   // Axes
-  ctx.strokeStyle = '#555';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + gh); ctx.lineTo(padL + gw, padT + gh);
-  ctx.stroke();
+  ctx.strokeStyle='#333'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pL,pT); ctx.lineTo(pL,pT+gh); ctx.lineTo(pL+gw,pT+gh); ctx.stroke();
 
-  // Y-axis labels
-  ctx.fillStyle = '#888';
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'right';
-  for (let y = 0; y <= 1; y += 0.25) {
-    const py = padT + gh - y * gh;
-    ctx.fillText(y.toFixed(2), padL - 4, py + 3);
-    if (y > 0) {
-      ctx.strokeStyle = '#2a2a3a';
-      ctx.beginPath(); ctx.moveTo(padL, py); ctx.lineTo(padL + gw, py); ctx.stroke();
-    }
-  }
-
-  // X-axis ticks
-  ctx.textAlign = 'center';
-  for (let x = 0; x <= xMax; x += xMax / 5) {
-    const px = padL + (x / xMax) * gw;
-    ctx.fillStyle = '#666';
-    ctx.fillText(Math.round(x), px, padT + gh + 14);
-    ctx.strokeStyle = '#1a1a2a';
-    ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT + gh); ctx.stroke();
-  }
-
-  // Draw each membership curve
-  const steps = 200;
-  defs.forEach(def => {
-    ctx.beginPath();
-    ctx.strokeStyle = def.color;
-    ctx.lineWidth = 2;
-    for (let i = 0; i <= steps; i++) {
-      const xv = (i / steps) * xMax;
-      const yv = def.fn(xv);
-      const px = padL + (i / steps) * gw;
-      const py = padT + gh - yv * gh;
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-
-    // Fill under curve
-    ctx.fillStyle = def.color + '15';
-    ctx.lineTo(padL + gw, padT + gh);
-    ctx.lineTo(padL, padT + gh);
-    ctx.closePath();
-    ctx.fill();
+  // Y ticks
+  ctx.fillStyle='#555'; ctx.font='8px monospace'; ctx.textAlign='right';
+  [0,0.5,1].forEach(y => {
+    const py = pT+gh-y*gh;
+    ctx.fillText(y.toFixed(1), pL-3, py+3);
+    if(y>0){ctx.strokeStyle='#1a1a2a';ctx.beginPath();ctx.moveTo(pL,py);ctx.lineTo(pL+gw,py);ctx.stroke();}
   });
 
-  // Current value vertical line
-  if (currentValue !== null && currentValue !== undefined) {
-    const cx = padL + (currentValue / xMax) * gw;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath(); ctx.moveTo(cx, padT); ctx.lineTo(cx, padT + gh); ctx.stroke();
-    ctx.setLineDash([]);
+  // Curves
+  const steps=120;
+  defs.forEach(d => {
+    ctx.beginPath(); ctx.strokeStyle=d.c; ctx.lineWidth=1.5;
+    for(let i=0;i<=steps;i++){
+      const xv=(i/steps)*xMax, yv=d.fn(xv);
+      const px=pL+(i/steps)*gw, py=pT+gh-yv*gh;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    ctx.fillStyle=d.c+'12'; ctx.lineTo(pL+gw,pT+gh); ctx.lineTo(pL,pT+gh); ctx.closePath(); ctx.fill();
+  });
 
-    // Dots on curves
-    ctx.fillStyle = '#fff';
-    defs.forEach(def => {
-      const yv = def.fn(currentValue);
-      const py = padT + gh - yv * gh;
-      ctx.beginPath();
-      ctx.arc(cx, py, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = def.color;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+  // Current value line + dots
+  if(current!==null&&current!==undefined) {
+    const cx=pL+(current/xMax)*gw;
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1; ctx.setLineDash([3,2]);
+    ctx.beginPath();ctx.moveTo(cx,pT);ctx.lineTo(cx,pT+gh);ctx.stroke();ctx.setLineDash([]);
+    ctx.font='bold 9px monospace'; ctx.textAlign='center'; ctx.fillStyle='#fff';
+    ctx.fillText(current.toFixed(0), cx, pT+gh+12);
+
+    defs.forEach(d=>{
+      const yv=d.fn(current), py=pT+gh-yv*gh;
+      ctx.beginPath();ctx.arc(cx,py,3,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+      ctx.strokeStyle=d.c;ctx.lineWidth=1.5;ctx.stroke();
     });
-
-    // Value label
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(currentValue.toFixed(1), cx, padT - 2);
   }
 }
 
-// ========== INFERENCE PANEL ==========
-function drawInference(data) {
-  const c = document.getElementById('inference');
+// ========== INFERENCE BAR ==========
+function drawInference(fd) {
+  const c = document.getElementById('inference-canvas');
   const ctx = c.getContext('2d');
-  const W = c.width, H = c.height;
-  ctx.clearRect(0, 0, W, H);
+  const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
 
-  const rules = [
-    { name: 'Attack',     weight: data.degreeAttack,     coeff: 3,  color: '#ff4444' },
-    { name: 'DoNothing',  weight: data.degreeDoNothing,   coeff: 1,  color: '#44aaff' },
-    { name: 'Flee',       weight: data.degreeFlee,        coeff: -3, color: '#44ff44' }
+  const rules=[
+    {n:'Attack',w:fd.dAtt,x:3,c:'#ff5555'},
+    {n:'DoNothing',w:fd.dDn,x:1,c:'#44aaff'},
+    {n:'Flee',w:fd.dFl,x:-3,c:'#44ff44'}
   ];
 
-  const barH = 28, gap = 12, startY = 16;
-  const barMaxW = 350;
+  const bw=120, bh=14, sx=100, gap=24;
 
-  // Title area
-  ctx.fillStyle = '#aaa';
-  ctx.font = '11px monospace';
-  ctx.textAlign = 'left';
+  // Label
+  ctx.fillStyle='#666';ctx.font='9px monospace';ctx.textAlign='left';
+  ctx.fillText('RULE OUTPUT:', 10, 14);
 
-  // Membership degrees
-  ctx.fillText('INPUT DEGREES:', 10, startY + 6);
-  const inputs = [
-    ['Melee', data.degreeMelee, '#ff6666'],
-    ['OutOfRange', data.degreeOutOfRange, '#44aaff'],
-    ['Uninjured', data.degreeUninjured, '#22ffaa'],
-    ['Hard', data.degreeHard, '#ff4444']
-  ];
-  inputs.forEach((inp, i) => {
-    const x = 10 + i * 140;
-    ctx.fillStyle = inp[2];
-    ctx.fillRect(x, startY + 14, inp[1] * 120, 10);
-    ctx.strokeStyle = '#555';
-    ctx.strokeRect(x, startY + 14, 120, 10);
-    ctx.fillStyle = '#ccc';
-    ctx.fillText(`${inp[0]}: ${inp[1].toFixed(3)}`, x + 125, startY + 23);
-  });
-
-  // Rules
-  let ry = startY + 44;
-  ctx.fillStyle = '#aaa';
-  ctx.fillText('RULE DEGREES & WEIGHTS:', 10, ry);
-  ry += 14;
-
-  rules.forEach((rule, i) => {
-    const y = ry + i * (barH + gap);
-    // Label
-    ctx.fillStyle = rule.color;
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(rule.name, 10, y + 18);
-    ctx.fillStyle = '#888';
-    ctx.font = '11px monospace';
-    ctx.fillText(`× ${rule.coeff}`, 100, y + 18);
+  rules.forEach((r,i) => {
+    const y = 22 + i * gap;
+    // Name + coeff
+    ctx.fillStyle=r.c; ctx.font='bold 10px monospace'; ctx.textAlign='left';
+    ctx.fillText(r.n, 10, y+10);
+    ctx.fillStyle='#555'; ctx.font='9px monospace';
+    ctx.fillText(`×${r.x>0?'+':''}${r.x}`, 75, y+10);
 
     // Weight bar
-    const bw = rule.weight * barMaxW;
-    ctx.fillStyle = rule.color + '40';
-    ctx.fillRect(130, y, bw, barH);
-    ctx.fillStyle = rule.color;
-    ctx.fillRect(130, y, bw, barH);
-    ctx.globalAlpha = 0.3;
-    ctx.fillRect(130, y, bw, barH);
-    ctx.globalAlpha = 1.0;
+    const barW = r.w * bw;
+    ctx.fillStyle=r.c+'30'; ctx.fillRect(sx, y, bw, bh);
+    ctx.fillStyle=r.c; ctx.globalAlpha=0.6;
+    ctx.fillRect(sx, y, barW, bh);
+    ctx.globalAlpha=1;
 
-    // Weight value
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 12px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`μ = ${rule.weight.toFixed(4)}`, 130 + bw + 8, y + 18);
-    ctx.fillStyle = '#aaa';
-    ctx.font = '11px monospace';
-    ctx.fillText(`→ weighted: ${(rule.weight * rule.coeff).toFixed(4)}`, 130 + bw + 8 + 130, y + 18);
+    // Weight val
+    ctx.fillStyle='#ccc'; ctx.font='9px monospace'; ctx.textAlign='left';
+    ctx.fillText(`μ=${r.w.toFixed(3)}`, sx+bw+6, y+10);
   });
 
   // Output
-  const outY = ry + rules.length * (barH + gap) + 10;
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 14px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(`Sugeno Output = (${rules.map(r => `${r.coeff}×μ${r.name}`).join(' + ')}) / sum`, 10, outY);
+  const oy = 22 + 3*gap;
+  ctx.fillStyle='#888'; ctx.font='9px monospace'; ctx.textAlign='left';
+  ctx.fillText('OUTPUT:', 10, oy+2);
 
-  const outputColor = data.output > 1 ? '#ff4444' : data.output > 0 ? '#44aaff' : '#44ff44';
-  const stateStr = data.output > 1 ? 'CHASE' : data.output > 0 ? 'IDLE' : 'EVADE';
+  const outColor = fd.output>1?'#ff5555':fd.output>0?'#44aaff':'#44ff44';
+  const stateStr = fd.output>1?'CHASE':fd.output>0?'IDLE':'EVADE';
 
-  ctx.fillStyle = outputColor;
-  ctx.font = 'bold 20px monospace';
-  ctx.fillText(`= ${data.output.toFixed(4)}`, 10, outY + 28);
+  // Number line
+  const nlx=70, nlw=W-nlx-120, nly=oy-2;
+  const minV=-3, maxV=3;
+  const mapX=v=>nlx+((v-minV)/(maxV-minV))*nlw;
 
-  ctx.fillStyle = '#333';
-  ctx.fillRect(220, outY + 8, 100, 28);
-  ctx.fillStyle = outputColor;
-  ctx.font = 'bold 16px monospace';
-  ctx.fillText(`→ ${stateStr}`, 225, outY + 28);
+  ctx.strokeStyle='#444'; ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(nlx,nly+5);ctx.lineTo(nlx+nlw,nly+5);ctx.stroke();
 
-  // Barbell visualization of output on number line
-  const numY = outY + 48;
-  const numW = 600, numX = 30;
-  ctx.strokeStyle = '#555';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(numX, numY); ctx.lineTo(numX + numW, numY); ctx.stroke();
+  // Regions
+  ctx.fillStyle='#44ff4410'; ctx.fillRect(mapX(-3),nly-2,mapX(0)-mapX(-3),14);
+  ctx.fillStyle='#44aaff10'; ctx.fillRect(mapX(0),nly-2,mapX(1)-mapX(0),14);
+  ctx.fillStyle='#ff555510'; ctx.fillRect(mapX(1),nly-2,mapX(3)-mapX(1),14);
 
-  // Range segments
-  // EVADE: [-3, 0], IDLE: [0, 1], CHASE: [1, ~3]
-  const minV = -3, maxV = 3;
-  const mapX = v => numX + ((v - minV) / (maxV - minV)) * numW;
+  ctx.fillStyle='#555';ctx.font='7px monospace';ctx.textAlign='center';
+  ctx.fillText('EVADE',mapX(-1.5),nly-3);ctx.fillText('IDLE',mapX(0.5),nly-3);ctx.fillText('CHASE',mapX(2),nly-3);
 
-  // EVADE region
-  ctx.fillStyle = '#44ff4420';
-  ctx.fillRect(mapX(minV), numY - 10, mapX(0) - mapX(minV), 20);
-  // IDLE region
-  ctx.fillStyle = '#44aaff20';
-  ctx.fillRect(mapX(0), numY - 10, mapX(1) - mapX(0), 20);
-  // CHASE region
-  ctx.fillStyle = '#ff444420';
-  ctx.fillRect(mapX(1), numY - 10, mapX(maxV) - mapX(1), 20);
-
-  // Tick marks
-  ctx.fillStyle = '#888';
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'center';
-  for (let v = minV; v <= maxV; v++) {
-    const x = mapX(v);
-    ctx.fillStyle = '#555';
-    ctx.fillRect(x - 0.5, numY - 6, 1, 12);
-    ctx.fillStyle = '#888';
-    ctx.fillText(v, x, numY + 18);
+  for(let v=-3;v<=3;v++){
+    const x=mapX(v);
+    ctx.fillStyle='#333';ctx.fillRect(x,nly+2,1,6);
+    ctx.fillStyle='#666';ctx.font='7px monospace';ctx.fillText(v,x,nly+14);
   }
-  ctx.fillText('EVADE', mapX(-1.5), numY - 14);
-  ctx.fillText('IDLE', mapX(0.5), numY - 14);
-  ctx.fillText('CHASE', mapX(2), numY - 14);
 
-  // Current output marker
-  const markerX = mapX(Math.max(minV, Math.min(maxV, data.output)));
-  ctx.fillStyle = outputColor;
-  ctx.beginPath();
-  ctx.moveTo(markerX, numY - 12);
-  ctx.lineTo(markerX - 6, numY - 20);
-  ctx.lineTo(markerX + 6, numY - 20);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(data.output.toFixed(3), markerX, numY - 24);
+  // Marker
+  const mx=mapX(Math.max(minV,Math.min(maxV,fd.output)));
+  ctx.fillStyle=outColor;
+  ctx.beginPath();ctx.moveTo(mx,nly-1);ctx.lineTo(mx-4,nly-8);ctx.lineTo(mx+4,nly-8);ctx.closePath();ctx.fill();
+
+  // Output value
+  ctx.fillStyle=outColor;ctx.font='bold 11px monospace';ctx.textAlign='left';
+  ctx.fillText(`= ${fd.output.toFixed(4)}`, W-110, oy+2);
+  ctx.fillStyle='#fff';ctx.font='bold 10px monospace';
+  ctx.fillText(`→ ${stateStr}`, W-110, oy+16);
 }
 
-// ========== GAME ==========
+// ========== GAME STATE ==========
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const W = 720, H = 540;
+let W, H;
 
-let player_Position = { x: Math.random() * W, y: Math.random() * H };
-let player_Speed = { x: 6, y: 6 };
-let player_power_up = false;
-let monster_Speed = { x: 1, y: 1 };
-let monster_Position = { x: Math.random() * W, y: Math.random() * H };
+function resize() {
+  const wrap = document.getElementById('game-wrap');
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
 
-// Monster state
-const monster = {
-  state: 0,
-  position: { x: monster_Position.x, y: monster_Position.y },
-  speed: { x: 1, y: 1 },
-  detected_distance: 0,
-  show_state: "IDLE",
-  HP: 160, Level: 1, output: 0,
-  old_state: 0,
-  player_position: { x: 0, y: 0 },
-  player_power_up: false,
-  patrol_index: 0,
-  patterns: [{ x: 50, y: 0 }, { x: 50, y: -50 }, { x: 0, y: -50 }, { x: 0, y: 0 }],
-  Offset_patterns: [],
-  vpW: W, vpH: H
+// Entities
+let player = { x: Math.random()*800+50, y: Math.random()*500+50 };
+const playerSpd = { x: 6, y: 6 };
+let powerUp = false;
+
+const mon = {
+  x: Math.random()*800+50, y: Math.random()*500+50,
+  spd: { x:1, y:1 }, dist: 0, state: 0, showState: 'IDLE',
+  hp: 160, level: 1, output: 0, oldState: 0,
+  patrolIdx: 0,
+  patterns: [{x:50,y:0},{x:50,y:-50},{x:0,y:-50},{x:0,y:0}],
+  offsets: []
 };
-monster.Offset_patterns = monster.patterns.map(p => ({ x: monster.position.x + p.x, y: monster.position.y + p.y }));
+mon.offsets = mon.patterns.map(p=>({x:mon.x+p.x, y:mon.y+p.y}));
 
-// Fuzzy state for display
-let fuzzyData = { degreeMelee: 0, degreeOutOfRange: 0, degreeUninjured: 0, degreeHard: 0,
-  degreeAttack: 0, degreeDoNothing: 0, degreeFlee: 0, output: 0 };
+let fd = { dMelee:0, dOR:0, dUn:0, dHard:0, dAtt:0, dDn:0, dFl:0, output:0 };
 
-function monsterUpdate() {
-  const pp = monster.player_position;
-  const dx = pp.x - monster.position.x;
-  const dy = pp.y - monster.position.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  monster.detected_distance = dist;
+// Input
+const keys={};
+document.addEventListener('keydown',e=>{
+  if(['1','2','3','4','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))e.preventDefault();
+  if(['1','2','3','4'].includes(e.key)&&!keys[e.key])handleKey(e.key);
+  keys[e.key]=true;
+});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
 
-  // Die if out of bounds
-  if (monster.position.x < 0 || monster.position.x > monster.vpW) { monster.state = 3; monster.show_state = "DIE"; }
-  if (monster.position.y < 0 || monster.position.y > monster.vpH) { monster.state = 3; monster.show_state = "DIE"; }
-  if (monster.state === 3) { respawn(); return; }
-
-  // Fuzzy inference
-  const dm = fl.FuzzyReverseGrade(dist, 0, 400);
-  const du = fl.FuzzyGrade(monster.HP, 140, 160);
-  const dh = fl.FuzzyGrade(monster.Level, 50, 60);
-  const dor = fl.FuzzyGrade(dist, 320, 400);
-  const dAtt = Math.min(Math.min(dm, du), 1 - dh);
-  const dDn = Math.min(1 - dm, du);
-  const dFl = Math.min(1 - dor, 1 - du);
-
-  let denom = dFl + dDn + dAtt;
-  if (denom === 0) denom = 0.001;
-  const out = (-3 * dFl + 1 * dDn + 3 * dAtt) / denom;
-  monster.output = out;
-
-  fuzzyData = { degreeMelee: dm, degreeOutOfRange: dor, degreeUninjured: du, degreeHard: dh,
-    degreeAttack: dAtt, degreeDoNothing: dDn, degreeFlee: dFl, output: out };
-
-  // State transition
-  if (out > 1) {
-    monster.state = 1; monster.show_state = "CHASE";
-    monster.speed = { x: out, y: out };
-  } else if (out > 0) {
-    if (monster.old_state !== 0) {
-      monster.state = 0; monster.show_state = "IDLE"; monster.patrol_index = 0;
-      for (let i = 0; i < monster.patterns.length; i++) {
-        monster.Offset_patterns[i] = { x: Math.round(monster.position.x + monster.patterns[i].x), y: Math.round(monster.position.y + monster.patterns[i].y) };
-      }
-      monster.speed = { x: 1, y: 1 };
-    } else {
-      monster.show_state = "IDLE";
-    }
-  } else {
-    monster.state = 2; monster.show_state = "EVADE";
-    monster.speed = { x: -1 * out, y: -1 * out };
-  }
-  monster.old_state = monster.state;
-
-  // Act
-  if (monster.state === 0) patrol();
-  else if (monster.state === 1) chase();
-  else if (monster.state === 2) evade();
+function handleKey(k){
+  if(k==='1'){powerUp=!powerUp;mon.level++;}
+  else if(k==='2'){powerUp=!powerUp;mon.level--;}
+  else if(k==='3'){mon.hp--;}
+  else if(k==='4'){mon.hp++;}
 }
 
-function moveToward(pos, target, spd) {
-  ['x', 'y'].forEach(axis => {
-    if (Math.abs(pos[axis] - target[axis]) >= spd[axis]) {
-      pos[axis] += pos[axis] < target[axis] ? spd[axis] : -spd[axis];
-    } else {
-      pos[axis] = target[axis];
-    }
+// Toggle buttons
+document.getElementById('toggleSidebar').addEventListener('click',()=>{
+  document.getElementById('app').classList.toggle('sidebar-collapsed');
+  setTimeout(resize,250);
+});
+document.getElementById('toggleInference').addEventListener('click',()=>{
+  document.getElementById('app').classList.toggle('inference-collapsed');
+  setTimeout(resize,250);
+});
+
+// ========== MONSTER LOGIC ==========
+function moveToward(pos,tgt,spd){
+  ['x','y'].forEach(a=>{
+    const d=Math.abs(pos[a]-tgt[a]);
+    if(d>=spd[a]) pos[a]+=pos[a]<tgt[a]?spd[a]:-spd[a];
+    else pos[a]=tgt[a];
   });
 }
 
-function patrol() {
-  const pi = monster.patrol_index;
-  if (pi < monster.patterns.length) {
-    const t = monster.Offset_patterns[pi];
-    if (monster.position.x !== t.x || monster.position.y !== t.y) {
-      moveToward(monster.position, t, monster.speed);
-    } else {
-      monster.patrol_index++;
+function monsterUpdate(){
+  const dx=player.x-mon.x, dy=player.y-mon.y;
+  mon.dist=Math.sqrt(dx*dx+dy*dy);
+
+  // Die check
+  if(mon.x<-20||mon.x>W+20||mon.y<-20||mon.y>H+20){
+    mon.state=3; mon.showState='DIE';
+    respawn(); return;
+  }
+
+  // Fuzzy inference
+  const dm=fl.RGrade(mon.dist,0,400);
+  const du=fl.Grade(mon.hp,140,160);
+  const dh=fl.Grade(mon.level,50,60);
+  const dor=fl.Grade(mon.dist,320,400);
+  const dAtt=fl.AND(fl.AND(dm,du),fl.NOT(dh));
+  const dDn=fl.AND(fl.NOT(dm),du);
+  const dFl=fl.AND(fl.NOT(dor),fl.NOT(du));
+
+  let den=dFl+dDn+dAtt; if(den===0)den=0.001;
+  const out=(-3*dFl+1*dDn+3*dAtt)/den;
+  mon.output=out;
+  fd={dMelee:dm,dOR:dor,dUn:du,dHard:dh,dAtt,dDn,dFl,output:out};
+
+  if(out>1){
+    mon.state=1;mon.showState='CHASE';mon.spd={x:out,y:out};
+  }else if(out>0){
+    if(mon.oldState!==0){
+      mon.state=0;mon.showState='IDLE';mon.patrolIdx=0;
+      mon.offsets=mon.patterns.map(p=>({x:Math.round(mon.x+p.x),y:Math.round(mon.y+p.y)}));
+      mon.spd={x:1,y:1};
     }
-  } else {
-    monster.patrol_index = 0;
+  }else{
+    mon.state=2;mon.showState='EVADE';mon.spd={x:-1*out,y:-1*out};
+  }
+  mon.oldState=mon.state;
+
+  if(mon.state===0)patrol();
+  else if(mon.state===1)moveToward(mon,player,mon.spd);
+  else if(mon.state===2){
+    const away={x:2*mon.x-player.x,y:2*mon.y-player.y};
+    moveToward(mon,away,mon.spd);
   }
 }
 
-function chase() { moveToward(monster.position, monster.player_position, monster.speed); }
-function evade() {
-  const away = { x: 2 * monster.position.x - monster.player_position.x, y: 2 * monster.position.y - monster.player_position.y };
-  moveToward(monster.position, away, monster.speed);
+function patrol(){
+  const pi=mon.patrolIdx;
+  if(pi<mon.patterns.length){
+    const t=mon.offsets[pi];
+    if(mon.x!==t.x||mon.y!==t.y) moveToward(mon,t,mon.spd);
+    else mon.patrolIdx++;
+  }else mon.patrolIdx=0;
 }
 
-function respawn() {
-  monster.position = { x: Math.random() * monster.vpW, y: Math.random() * monster.vpH };
-  monster.state = 0; monster.show_state = "IDLE"; monster.patrol_index = 0;
-  for (let i = 0; i < monster.patterns.length; i++) {
-    monster.Offset_patterns[i] = { x: monster.position.x + monster.patterns[i].x, y: monster.position.y + monster.patterns[i].y };
-  }
+function respawn(){
+  mon.x=Math.random()*W;mon.y=Math.random()*H;
+  mon.state=0;mon.showState='IDLE';mon.patrolIdx=0;
+  mon.offsets=mon.patterns.map(p=>({x:mon.x+p.x,y:mon.y+p.y}));
 }
 
-// ========== INPUT ==========
-const keys = {};
-document.addEventListener('keydown', e => {
-  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','1','2','3','4'].includes(e.key)) e.preventDefault();
-  if (['1','2','3','4'].includes(e.key) && !keys[e.key]) handleKey(e.key);
-  keys[e.key] = true;
-});
-document.addEventListener('keyup', e => { keys[e.key] = false; });
+// ========== RENDER ==========
+const stateCol={IDLE:'#44aaff',CHASE:'#ff5555',EVADE:'#44ff46',DIE:'#888'};
 
-function handleKey(k) {
-  if (k === '1') { player_power_up = !player_power_up; monster.Level++; }
-  else if (k === '2') { player_power_up = !player_power_up; monster.Level--; }
-  else if (k === '3') { monster.HP -= 1; }
-  else if (k === '4') { monster.HP += 1; }
-}
-
-// ========== UPDATE & DRAW ==========
-const stateColors = { IDLE: '#44aaff', CHASE: '#ff4444', EVADE: '#44ff44', DIE: '#888888' };
-
-function update() {
-  if (keys['ArrowLeft'])  player_Position.x -= player_Speed.x;
-  if (keys['ArrowRight']) player_Position.x += player_Speed.x;
-  if (keys['ArrowUp'])    player_Position.y -= player_Speed.y;
-  if (keys['ArrowDown'])  player_Position.y += player_Speed.y;
-
-  monster.player_position = player_Position;
-  monster.player_power_up = player_power_up;
-  monsterUpdate();
-
-  if (player_Position.x < 0 || player_Position.x > W || player_Position.y < 0 || player_Position.y > H) {
-    player_Position = { x: Math.random() * W, y: Math.random() * H };
-  }
-}
-
-function drawGame() {
-  ctx.clearRect(0, 0, W, H);
+function drawGame(){
+  ctx.clearRect(0,0,W,H);
 
   // Grid
-  ctx.strokeStyle = '#222244';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.strokeStyle='#151530';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=64){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=64){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
   // Detection range
-  ctx.beginPath();
-  ctx.arc(monster.position.x, monster.position.y, 400, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,100,0.08)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.beginPath();ctx.arc(mon.x,mon.y,400,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,100,0.06)';ctx.lineWidth=1;ctx.stroke();
 
-  // Detection line
-  ctx.beginPath();
-  ctx.moveTo(monster.position.x, monster.position.y);
-  ctx.lineTo(player_Position.x, player_Position.y);
-  ctx.strokeStyle = 'rgba(255,255,100,0.25)';
-  ctx.setLineDash([5, 5]);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  // Line to player
+  ctx.beginPath();ctx.moveTo(mon.x,mon.y);ctx.lineTo(player.x,player.y);
+  ctx.strokeStyle='rgba(255,255,100,0.2)';ctx.setLineDash([5,5]);ctx.stroke();ctx.setLineDash([]);
 
   // Player mouse
-  ctx.save();
-  ctx.translate(player_Position.x, player_Position.y);
-  ctx.fillStyle = player_power_up ? '#ff6666' : '#cccccc';
-  ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#666'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = player_power_up ? '#ff8888' : '#ddd';
-  ctx.beginPath(); ctx.arc(-7, -12, 5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(7, -12, 5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#333';
-  ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(3, -2, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#ff9999';
-  ctx.beginPath(); ctx.arc(0, 2, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(0, 12); ctx.bezierCurveTo(16, 16, 16, 24, 8, 28); ctx.stroke();
+  ctx.save();ctx.translate(player.x,player.y);
+  ctx.fillStyle=powerUp?'#ff6666':'#ccc';
+  ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#555';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=powerUp?'#ff8888':'#ddd';
+  ctx.beginPath();ctx.arc(-7,-13,6,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(7,-13,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#222';
+  ctx.beginPath();ctx.arc(-4,-2,2.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(4,-2,2.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#ff9999';ctx.beginPath();ctx.arc(0,2,2,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#888';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(0,14);ctx.bezierCurveTo(18,18,18,28,10,32);ctx.stroke();
   ctx.restore();
-  if (player_power_up) {
-    ctx.beginPath(); ctx.arc(player_Position.x, player_Position.y, 18, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,100,100,0.4)'; ctx.lineWidth = 2; ctx.stroke();
+  if(powerUp){
+    ctx.beginPath();ctx.arc(player.x,player.y,20,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,80,80,0.35)';ctx.lineWidth=2;ctx.stroke();
   }
 
   // Monster cat
-  const sc = stateColors[monster.show_state] || '#fff';
-  ctx.save();
-  ctx.translate(monster.position.x, monster.position.y);
-  ctx.fillStyle = sc;
-  ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-  // Ears
-  ctx.fillStyle = sc;
-  ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(-13, -20); ctx.lineTo(-3, -12); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(10, -8); ctx.lineTo(13, -20); ctx.lineTo(3, -12); ctx.closePath(); ctx.fill();
-  // Eyes
-  ctx.fillStyle = '#111';
-  ctx.beginPath(); ctx.arc(-4, -2, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(4, -2, 2, 0, Math.PI * 2); ctx.fill();
-  // Whiskers
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-5, 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-14, 4); ctx.lineTo(-5, 3); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(5, 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(14, 4); ctx.lineTo(5, 3); ctx.stroke();
+  const sc=stateCol[mon.showState]||'#fff';
+  ctx.save();ctx.translate(mon.x,mon.y);
+  // Glow for chase
+  if(mon.showState==='CHASE'){
+    ctx.beginPath();ctx.arc(0,0,22,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,80,80,0.25)';ctx.lineWidth=2;ctx.stroke();
+  }
+  ctx.fillStyle=sc;ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=sc;
+  ctx.beginPath();ctx.moveTo(-11,-9);ctx.lineTo(-14,-23);ctx.lineTo(-3,-13);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(11,-9);ctx.lineTo(14,-23);ctx.lineTo(3,-13);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#111';
+  ctx.beginPath();ctx.arc(-4,-2,2.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(4,-2,2.5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(-16,0);ctx.lineTo(-6,2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-16,4);ctx.lineTo(-6,3);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(6,2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(16,4);ctx.lineTo(6,3);ctx.stroke();
   ctx.restore();
 
   // HUD
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
-  ctx.fillRect(8, 8, 340, 62);
-  ctx.strokeStyle = '#4a4a6a'; ctx.strokeRect(8, 8, 340, 62);
-  ctx.fillStyle = '#fff'; ctx.font = '12px monospace'; ctx.textAlign = 'left';
-  ctx.fillText(`Player (${Math.round(player_Position.x)}, ${Math.round(player_Position.y)})  Power: ${player_power_up}`, 16, 26);
-  ctx.fillText(`Monster (${Math.round(monster.position.x)}, ${Math.round(monster.position.y)})  Dist: ${monster.detected_distance.toFixed(1)}`, 16, 42);
-  ctx.fillText(`HP: ${monster.HP}  Level: ${monster.Level}  Output: ${monster.output.toFixed(4)}`, 16, 58);
+  const hL=document.getElementById('hudLeft');
+  hL.innerHTML=`<span class="lbl">Player</span> <span class="val">(${Math.round(player.x)},${Math.round(player.y)})</span> <span class="lbl">Power</span> <span class="val">${powerUp?'ON':'OFF'}</span><br>`+
+    `<span class="lbl">Monster</span> <span class="val">(${Math.round(mon.x)},${Math.round(mon.y)})</span> <span class="lbl">Dist</span> <span class="val">${mon.dist.toFixed(1)}</span>`;
 
-  // State badge
-  ctx.fillStyle = '#333';
-  ctx.fillRect(W - 100, 8, 92, 24);
-  ctx.fillStyle = sc; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
-  ctx.fillText(monster.show_state, W - 54, 25);
-  ctx.textAlign = 'left';
+  const hR=document.getElementById('hudRight');
+  hR.innerHTML=`<span class="lbl">HP</span> <span class="val">${mon.hp}</span> <span class="lbl">Lv</span> <span class="val">${mon.level}</span> <span class="lbl">FL</span> <span class="val">${mon.output.toFixed(4)}</span> <span class="state-badge state-${mon.showState}">${mon.showState}</span>`;
 }
 
-function drawGraphs() {
-  drawMembershipGraph('graphRange', rangeDefs, 400, monster.detected_distance);
-  drawMembershipGraph('graphHealth', healthDefs, 160, monster.HP);
-  drawMembershipGraph('graphRating', ratingDefs, 60, monster.Level);
-  drawInference(fuzzyData);
+function drawLiveValues(){
+  const el=document.getElementById('liveValues');
+  el.innerHTML=[
+    `<span style="color:#ff5555">μ Melee</span> ${fd.dMelee.toFixed(3)}`,
+    `<span style="color:#44aaff">μ OOR</span> ${fd.dOR.toFixed(3)}`,
+    `<span style="color:#22ffaa">μ Uninj</span> ${fd.dUn.toFixed(3)}`,
+    `<span style="color:#ff4444">μ Hard</span> ${fd.dHard.toFixed(3)}`,
+    `<span style="color:#ff5555">μ Attack</span> ${fd.dAtt.toFixed(3)}`,
+    `<span style="color:#44aaff">μ DoNothing</span> ${fd.dDn.toFixed(3)}`,
+    `<span style="color:#44ff44">μ Flee</span> ${fd.dFl.toFixed(3)}`,
+    `<span style="color:#fff;font-weight:bold">Output</span> <span style="color:${stateCol[mon.showState]||'#fff'}">${fd.output.toFixed(4)}</span>`
+  ].join('<br>');
 }
 
-function loop() {
-  update();
+// ========== MAIN LOOP ==========
+function loop(){
+  // Player movement
+  if(keys['ArrowLeft'])player.x-=playerSpd.x;
+  if(keys['ArrowRight'])player.x+=playerSpd.x;
+  if(keys['ArrowUp'])player.y-=playerSpd.y;
+  if(keys['ArrowDown'])player.y+=playerSpd.y;
+
+  monsterUpdate();
+
+  if(player.x<-10||player.x>W+10||player.y<-10||player.y>H+10)
+    player={x:Math.random()*W,y:Math.random()*H};
+
   drawGame();
-  drawGraphs();
+  drawSmallGraph('gRange',rangeDefs,400,mon.dist);
+  drawSmallGraph('gHealth',healthDefs,160,mon.hp);
+  drawSmallGraph('gRating',ratingDefs,60,mon.level);
+  drawInference(fd);
+  drawLiveValues();
   requestAnimationFrame(loop);
 }
 loop();
