@@ -94,18 +94,17 @@
 
   /* Touch D-pad */
   #touch-pad {
-    display: none; position: fixed; bottom: 20px; left: 20px; z-index: 20;
-    grid-template-columns: 42px 42px 42px; grid-template-rows: 42px 42px 42px;
+    display: grid; position: fixed; bottom: 20px; left: 20px; z-index: 30;
+    grid-template-columns: 48px 48px 48px; grid-template-rows: 48px 48px 48px;
     gap: 4px;
   }
-  @media (pointer: coarse), (max-width: 768px) { #touch-pad { display: grid; } }
   .touch-btn {
-    width: 42px; height: 42px; border-radius: 8px; border: 1px solid var(--border);
-    background: rgba(19,19,42,0.8); color: var(--accent); font-size: 18px;
+    width: 48px; height: 48px; border-radius: 10px; border: 2px solid rgba(110,198,255,0.3);
+    background: rgba(19,19,42,0.85); color: var(--accent); font-size: 20px; font-weight: bold;
     display: flex; align-items: center; justify-content: center; cursor: pointer;
     user-select: none; -webkit-user-select: none; touch-action: manipulation;
   }
-  .touch-btn:active { background: rgba(110,198,255,0.25); }
+  .touch-btn:active { background: rgba(110,198,255,0.3); border-color: var(--accent); }
   #touch-w { grid-column: 2; grid-row: 1; }
   #touch-a { grid-column: 1; grid-row: 2; }
   #touch-s { grid-column: 2; grid-row: 3; }
@@ -113,16 +112,15 @@
 
   /* Action buttons (mobile) */
   #touch-actions {
-    display: none; position: fixed; bottom: 24px; right: 20px; z-index: 20;
-    gap: 6px;
+    display: flex; position: fixed; bottom: 24px; right: 20px; z-index: 30;
+    gap: 8px;
   }
-  @media (pointer: coarse), (max-width: 768px) { #touch-actions { display: flex; } }
   .action-btn {
-    width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border);
-    background: rgba(19,19,42,0.8); color: var(--dim); font-size: 13px;
+    width: 44px; height: 44px; border-radius: 8px; border: 2px solid rgba(110,198,255,0.3);
+    background: rgba(19,19,42,0.85); color: var(--dim); font-size: 15px; font-weight: bold;
     font-family: inherit; cursor: pointer; user-select: none; touch-action: manipulation;
   }
-  .action-btn:active { background: rgba(110,198,255,0.25); color: var(--accent); }
+  .action-btn:active { background: rgba(110,198,255,0.3); color: var(--accent); border-color: var(--accent); }
 </style>
 </head>
 <body>
