@@ -83,6 +83,14 @@
   .state-IDLE { background: var(--blue); color: #fff; }
   .state-EVADE { background: var(--green); color: #000; }
   .state-DIE { background: #666; color: #fff; }
+  .hud-btn {
+    display: inline-block; width: 20px; height: 18px; line-height: 16px;
+    border: 1px solid var(--border); border-radius: 3px; background: rgba(19,19,42,0.8);
+    color: var(--accent); font-size: 13px; font-weight: bold; cursor: pointer;
+    text-align: center; padding: 0; vertical-align: middle; margin: 0 1px;
+    touch-action: manipulation; user-select: none;
+  }
+  .hud-btn:active { background: rgba(110,198,255,0.3); }
 
   /* Controls hint */
   #ctrl-hint {
@@ -595,7 +603,9 @@ function drawGame(){
     `<span class="lbl">Monster</span> <span class="val">(${Math.round(mon.x)},${Math.round(mon.y)})</span> <span class="lbl">Dist</span> <span class="val">${mon.dist.toFixed(1)}</span>`;
 
   const hR=document.getElementById('hudRight');
-  hR.innerHTML=`<span class="lbl">HP</span> <span class="val">${mon.hp}</span> <span class="lbl">Lv</span> <span class="val">${mon.level}</span> <span class="lbl">FL</span> <span class="val">${mon.output.toFixed(4)}</span> <span class="state-badge state-${mon.showState}">${mon.showState}</span>${moving?'<span style="color:#4f4;margin-left:6px">●MOVE</span>':''}`;
+  hR.innerHTML=`<span class="lbl">HP</span> <span class="val">${mon.hp}</span> <button class="hud-btn" onclick="handleKey('3')">−</button><button class="hud-btn" onclick="handleKey('4')">+</button> ` +
+    `<span class="lbl">Lv</span> <span class="val">${mon.level}</span> <button class="hud-btn" onclick="handleKey('2')">−</button><button class="hud-btn" onclick="handleKey('1')">+</button> ` +
+    `<span class="lbl">FL</span> <span class="val">${mon.output.toFixed(4)}</span> <span class="state-badge state-${mon.showState}">${mon.showState}</span>${moving?'<span style="color:#4f4;margin-left:6px">●MOVE</span>':''}`;
 }
 
 function drawLiveValues(){
