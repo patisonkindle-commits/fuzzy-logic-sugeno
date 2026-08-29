@@ -70,8 +70,9 @@
     display: flex; justify-content: space-between; padding: 8px 12px;
   }
   .hud-box {
-    background: rgba(10,10,26,0.75); border: 1px solid var(--border); border-radius: 4px;
+    background: rgba(10,10,26,0.85); border: 1px solid var(--border); border-radius: 4px;
     padding: 6px 10px; font-size: 11px; line-height: 1.5; backdrop-filter: blur(4px);
+    pointer-events: auto; white-space: nowrap;
   }
   .hud-box .val { color: #fff; }
   .hud-box .lbl { color: var(--dim); }
@@ -84,9 +85,9 @@
   .state-EVADE { background: var(--green); color: #000; }
   .state-DIE { background: #666; color: #fff; }
   .hud-btn {
-    display: inline-block; width: 20px; height: 18px; line-height: 16px;
-    border: 1px solid var(--border); border-radius: 3px; background: rgba(19,19,42,0.8);
-    color: var(--accent); font-size: 13px; font-weight: bold; cursor: pointer;
+    display: inline-block; width: 18px; height: 16px; line-height: 14px;
+    border: 1px solid var(--border); border-radius: 3px; background: rgba(19,19,42,0.9);
+    color: var(--accent); font-size: 12px; font-weight: bold; cursor: pointer;
     text-align: center; padding: 0; vertical-align: middle; margin: 0 1px;
     touch-action: manipulation; user-select: none;
   }
