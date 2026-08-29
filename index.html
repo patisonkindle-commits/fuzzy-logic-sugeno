@@ -365,8 +365,11 @@ function resize() {
 }
 resize();
 window.addEventListener('resize', resize);
-// Auto-collapse sidebar on mobile
-if(window.innerWidth <= 768) document.getElementById('app').classList.add('sidebar-collapsed');
+// Auto-collapse sidebar on mobile, then resize
+if(window.innerWidth <= 768) {
+  document.getElementById('app').classList.add('sidebar-collapsed');
+  requestAnimationFrame(resize);
+}
 
 // Entities
 let player = { x: Math.random()*800+50, y: Math.random()*500+50 };
@@ -562,7 +565,7 @@ function drawGame(){
     `<span class="lbl">Monster</span> <span class="val">(${Math.round(mon.x)},${Math.round(mon.y)})</span> <span class="lbl">Dist</span> <span class="val">${mon.dist.toFixed(1)}</span>`;
 
   const hR=document.getElementById('hudRight');
-  hR.innerHTML=`<span class="lbl">HP</span> <span class="val">${mon.hp}</span> <span class="lbl">Lv</span> <span class="val">${mon.level}</span> <span class="lbl">FL</span> <span class="val">${mon.output.toFixed(4)}</span> <span class="state-badge state-${mon.showState}">${mon.showState}</span>`;
+  hR.innerHTML=`<span class="lbl">HP</span> <span class="val">${mon.hp}</span> <span class="lbl">Lv</span> <span class="val">${mon.level}</span> <span class="lbl">FL</span> <span class="val">${mon.output.toFixed(4)}</span> <span class="state-badge state-${mon.showState}">${mon.showState}</span>${moving?'<span style="color:#4f4;margin-left:6px">●MOVE</span>':''}`;
 }
 
 function drawLiveValues(){
@@ -582,6 +585,7 @@ function drawLiveValues(){
 // ========== MAIN LOOP ==========
 function loop(){
   // Player movement
+  const moving = keys['a']||keys['A']||keys['d']||keys['D']||keys['w']||keys['W']||keys['s']||keys['S'];
   if(keys['a']||keys['A'])player.x-=playerSpd.x;
   if(keys['d']||keys['D'])player.x+=playerSpd.x;
   if(keys['w']||keys['W'])player.y-=playerSpd.y;
