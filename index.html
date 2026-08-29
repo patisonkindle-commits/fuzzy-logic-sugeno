@@ -6,503 +6,620 @@
 <title>Fuzzy Logic Sugeno - AI Monster</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #1a1a2e; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Segoe UI', Arial, sans-serif; color: #e0e0e0; }
-  h1 { margin-bottom: 8px; font-size: 22px; color: #7ec8e3; }
-  #game { border: 2px solid #4a4a6a; display: block; background: #2a2a4a; }
-  #controls { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-  .ctrl-group { background: #2a2a4a; border: 1px solid #4a4a6a; border-radius: 6px; padding: 8px 14px; text-align: center; }
-  .ctrl-group .label { font-size: 11px; color: #8888aa; margin-bottom: 4px; }
-  .ctrl-group .keys { font-size: 13px; color: #b0b0d0; }
-  kbd { background: #3a3a5a; border: 1px solid #5a5a7a; border-radius: 3px; padding: 1px 5px; font-size: 12px; color: #ccccee; }
+  body { background: #111122; color: #e0e0e0; font-family: 'Segoe UI', Arial, sans-serif; padding: 12px; }
+  h1 { text-align: center; margin-bottom: 10px; font-size: 20px; color: #7ec8e3; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+  .panel { background: #1a1a2e; border: 1px solid #333355; border-radius: 6px; padding: 10px; }
+  .panel h3 { font-size: 13px; color: #7ec8e3; margin-bottom: 6px; text-align: center; }
+  #game { display: block; }
+  .graphs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .graph-panel canvas { display: block; }
+  #inference { margin-top: 10px; }
+  #inference canvas { display: block; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #aaa; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+  #controls { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .ctrl { background: #1a1a2e; border: 1px solid #333355; border-radius: 4px; padding: 5px 10px; text-align: center; font-size: 12px; }
+  kbd { background: #2a2a4a; border: 1px solid #4a4a6a; border-radius: 2px; padding: 1px 4px; font-size: 11px; color: #ccc; }
 </style>
 </head>
 <body>
 <h1>Fuzzy Logic Sugeno — AI Monster Behavior</h1>
-<canvas id="game" width="1024" height="768"></canvas>
+
+<div class="row">
+  <div class="panel">
+    <canvas id="game" width="720" height="540"></canvas>
+  </div>
+</div>
+
+<div class="row graphs">
+  <div class="panel">
+    <h3>Range Membership</h3>
+    <canvas id="graphRange" width="320" height="160"></canvas>
+    <div class="legend" id="legendRange"></div>
+  </div>
+  <div class="panel">
+    <h3>Health Membership</h3>
+    <canvas id="graphHealth" width="320" height="160"></canvas>
+    <div class="legend" id="legendHealth"></div>
+  </div>
+  <div class="panel">
+    <h3>Rating Membership</h3>
+    <canvas id="graphRating" width="320" height="160"></canvas>
+    <div class="legend" id="legendRating"></div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel" style="width:100%;">
+    <h3>Fuzzy Inference (Sugeno Output)</h3>
+    <canvas id="inference" width="980" height="200"></canvas>
+  </div>
+</div>
+
 <div id="controls">
-  <div class="ctrl-group"><div class="label">Movement</div><div class="keys"><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></div></div>
-  <div class="ctrl-group"><div class="label">Power Up + Level ↑</div><div class="keys"><kbd>1</kbd></div></div>
-  <div class="ctrl-group"><div class="label">Power Down + Level ↓</div><div class="keys"><kbd>2</kbd></div></div>
-  <div class="ctrl-group"><div class="label">Monster HP −1</div><div class="keys"><kbd>3</kbd></div></div>
-  <div class="ctrl-group"><div class="label">Monster HP +1</div><div class="keys"><kbd>4</kbd></div></div>
+  <div class="ctrl"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> Move</div>
+  <div class="ctrl"><kbd>1</kbd> Power↑ Level↑</div>
+  <div class="ctrl"><kbd>2</kbd> Power↓ Level↓</div>
+  <div class="ctrl"><kbd>3</kbd> HP−1</div>
+  <div class="ctrl"><kbd>4</kbd> HP+1</div>
 </div>
 
 <script>
-// === FuzzyLogic.js ===
+// ========== FUZZY LOGIC CORE ==========
 class FuzzyLogic {
-  FuzzyGrade(value, x0, x1) {
-    if (value <= x0) return 0;
-    if (value >= x1) return 1;
-    return (value / (x1 - x0)) - (x0 / (x1 - x0));
+  FuzzyGrade(v, x0, x1) {
+    if (v <= x0) return 0;
+    if (v >= x1) return 1;
+    return (v - x0) / (x1 - x0);
   }
-  FuzzyReverseGrade(value, x0, x1) {
-    if (value <= x0) return 1;
-    if (value >= x1) return 0;
-    return (-value / (x1 - x0)) + (x1 / (x1 - x0));
+  FuzzyReverseGrade(v, x0, x1) {
+    if (v <= x0) return 1;
+    if (v >= x1) return 0;
+    return (x1 - v) / (x1 - x0);
   }
-  FuzzyTriangle(value, x0, x1, x2) {
-    if (value <= x0) return 0;
-    if (value === x1) return 1;
-    if (value > x0 && value < x1) return (value / (x1 - x0)) - (x0 / (x1 - x0));
-    return (-value / (x2 - x1)) + (x2 / (x2 - x1));
+  FuzzyTriangle(v, x0, x1, x2) {
+    if (v <= x0 || v >= x2) return 0;
+    if (v === x1) return 1;
+    return v < x1 ? (v - x0) / (x1 - x0) : (x2 - v) / (x2 - x1);
   }
-  FuzzyTrapezoid(value, x0, x1, x2, x3) {
-    if (value <= x0) return 0;
-    if (value >= x1 && value <= x2) return 1;
-    if (value > x0 && value < x1) return (value / (x1 - x0)) - (x0 / (x1 - x0));
-    return (-value / (x3 - x2)) + (x3 / (x3 - x2));
+  FuzzyTrapezoid(v, x0, x1, x2, x3) {
+    if (v <= x0 || v >= x3) return 0;
+    if (v >= x1 && v <= x2) return 1;
+    if (v > x0 && v < x1) return (v - x0) / (x1 - x0);
+    return (x3 - v) / (x3 - x2);
   }
   FuzzyAND(A, B) { return Math.min(A, B); }
   FuzzyOR(A, B) { return Math.max(A, B); }
   FuzzyNOT(A) { return 1.0 - A; }
 }
 
-// === RangeMemberShip.js ===
-class RangeMemberShip {
-  constructor() {
-    this.fl = new FuzzyLogic();
-    this.x0 = 80; this.x1 = 160; this.x2 = 320; this.x3 = 400;
-  }
-  calMeberShipValueMelee(x) { return this.fl.FuzzyReverseGrade(x, 0, this.x3); }
-  calMeberShipValueProjectile(x) { return this.fl.FuzzyTrapezoid(x, this.x0, this.x1, this.x2, this.x3); }
-  calMeberShipValueOutofRange(x) { return this.fl.FuzzyGrade(x, this.x2, this.x3); }
-}
+// ========== MEMBERSHIP DEFINITIONS ==========
+const fl = new FuzzyLogic();
 
-// === HealthMemberShip.js ===
-class HealthMemberShip {
-  constructor() {
-    this.fl = new FuzzyLogic();
-    this.x0=20; this.x1=40; this.x2=60; this.x3=80;
-    this.x4=100; this.x5=120; this.x6=140; this.x7=160;
-  }
-  calMeberShipValueNearDeath(x) { return this.fl.FuzzyReverseGrade(x, 0, this.x1); }
-  calMeberShipValueCritical(x) { return this.fl.FuzzyTrapezoid(x, this.x0, this.x1, this.x2, this.x3); }
-  calMeberShipValueSerious(x) { return this.fl.FuzzyTrapezoid(x, this.x2, this.x3, this.x4, this.x5); }
-  calMeberShipValueMinor(x) { return this.fl.FuzzyTrapezoid(x, this.x4, this.x5, this.x6, this.x7); }
-  calMeberShipValueUninjured(x) { return this.fl.FuzzyGrade(x, this.x6, this.x7); }
-}
+const rangeDefs = [
+  { name: 'Melee',      color: '#ff6666', fn: x => fl.FuzzyReverseGrade(x, 0, 400) },
+  { name: 'Projectile',  color: '#ffaa44', fn: x => fl.FuzzyTrapezoid(x, 80, 160, 320, 400) },
+  { name: 'OutOfRange',  color: '#44aaff', fn: x => fl.FuzzyGrade(x, 320, 400) }
+];
 
-// === RatingMemberShip.js ===
-class RatingMemberShip {
-  constructor() {
-    this.fl = new FuzzyLogic();
-    this.x0=10; this.x1=20; this.x2=30; this.x3=40; this.x4=50; this.x5=60;
-  }
-  calMeberShipValueWimp(x) { return this.fl.FuzzyReverseGrade(x, 0, this.x1); }
-  calMeberShipValueEasy(x) { return this.fl.FuzzyTrapezoid(x, this.x0, this.x1, this.x2, this.x3); }
-  calMeberShipValueModerate(x) { return this.fl.FuzzyTrapezoid(x, this.x2, this.x3, this.x4, this.x5); }
-  calMeberShipValueHard(x) { return this.fl.FuzzyGrade(x, this.x4, this.x5); }
-}
+const healthDefs = [
+  { name: 'NearDeath', color: '#ff2222', fn: x => fl.FuzzyReverseGrade(x, 0, 40) },
+  { name: 'Critical',  color: '#ff6622', fn: x => fl.FuzzyTrapezoid(x, 20, 40, 60, 80) },
+  { name: 'Serious',   color: '#ffaa22', fn: x => fl.FuzzyTrapezoid(x, 60, 80, 100, 120) },
+  { name: 'Minor',     color: '#44cc44', fn: x => fl.FuzzyTrapezoid(x, 100, 120, 140, 160) },
+  { name: 'Uninjured',  color: '#22ffaa', fn: x => fl.FuzzyGrade(x, 140, 160) }
+];
 
-// === Monster.js ===
-const IDLE = 0, CHASE = 1, EVADE = 2, INTERCEPT = 3, DIE = 4;
+const ratingDefs = [
+  { name: 'Wimp',     color: '#8888ff', fn: x => fl.FuzzyReverseGrade(x, 0, 20) },
+  { name: 'Easy',     color: '#44cc44', fn: x => fl.FuzzyTrapezoid(x, 10, 20, 30, 40) },
+  { name: 'Moderate', color: '#ffaa22', fn: x => fl.FuzzyTrapezoid(x, 30, 40, 50, 60) },
+  { name: 'Hard',     color: '#ff4444', fn: x => fl.FuzzyGrade(x, 50, 60) }
+];
 
-class Monster {
-  constructor(in_position, in_speed, vpW, vpH) {
-    this.state = IDLE;
-    this.position = { x: in_position.x, y: in_position.y };
-    this.speed = { x: in_speed.x, y: in_speed.y };
-    this.Rotation = 0;
-    this.detected_distance = 0;
-    this.vpW = vpW;
-    this.vpH = vpH;
+// ========== GRAPH DRAWING ==========
+function drawMembershipGraph(canvasId, defs, xMax, currentValue) {
+  const c = document.getElementById(canvasId);
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const padL = 36, padR = 10, padT = 10, padB = 22;
+  const gw = W - padL - padR, gh = H - padT - padB;
 
-    this.patterns = [
-      { x: 50, y: 0 },
-      { x: 50, y: -50 },
-      { x: 0, y: -50 },
-      { x: 0, y: 0 }
-    ];
-    this.Offset_patterns = this.patterns.map(p => ({ x: this.position.x + p.x, y: this.position.y + p.y }));
-    this.patrol_index = 0;
-    this.show_state = "IDLE";
+  ctx.clearRect(0, 0, W, H);
 
-    this.player_position = { x: 0, y: 0 };
-    this.player_speed = { x: 0, y: 0 };
-    this.player_power_up = false;
+  // Axes
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + gh); ctx.lineTo(padL + gw, padT + gh);
+  ctx.stroke();
 
-    this.fl = new FuzzyLogic();
-    this.rangemembership = new RangeMemberShip();
-    this.healthmebership = new HealthMemberShip();
-    this.ratingmembership = new RatingMemberShip();
-    this.HP = 160;
-    this.Level = 1;
-    this.old_state = 0;
-    this.output = 0;
-    this.old_position = { x: 0, y: 0 };
-  }
-
-  Update(in_player_position, in_player_speed, in_player_power_up) {
-    this.player_position = in_player_position;
-    this.player_speed = in_player_speed;
-    this.player_power_up = in_player_power_up;
-    this.Transition();
-    if (this.state === IDLE) {
-      this.Patrol();
-    } else if (this.state === CHASE) {
-      this.basicChasing();
-    } else if (this.state === EVADE) {
-      this.basicEvading();
-    } else if (this.state === DIE) {
-      this.Respawn();
-    }
-    this.old_position = { x: this.position.x, y: this.position.y };
-  }
-
-  Transition() {
-    let temp = { x: this.player_position.x - this.position.x, y: this.player_position.y - this.position.y };
-    let temp2 = Math.sqrt(temp.x * temp.x + temp.y * temp.y);
-    this.detected_distance = temp2;
-
-    if (this.position.x < 0 || this.position.x > this.vpW) this.state = DIE;
-    if (this.position.y < 0 || this.position.y > this.vpH) this.state = DIE;
-
-    let degreeMelee = this.rangemembership.calMeberShipValueMelee(temp2);
-    let degreeUninjured = this.healthmebership.calMeberShipValueUninjured(this.HP);
-    let degreeHard = this.ratingmembership.calMeberShipValueHard(this.Level);
-    let degreeAttack = this.fl.FuzzyAND(this.fl.FuzzyAND(degreeMelee, degreeUninjured), this.fl.FuzzyNOT(degreeHard));
-
-    let degreeDoNothing = this.fl.FuzzyAND(this.fl.FuzzyNOT(degreeMelee), degreeUninjured);
-
-    let degreeOutOfRange = this.rangemembership.calMeberShipValueOutofRange(temp2);
-    let degreeFlee = this.fl.FuzzyAND(this.fl.FuzzyNOT(degreeOutOfRange), this.fl.FuzzyNOT(degreeUninjured));
-
-    let denom = degreeFlee + degreeDoNothing + degreeAttack;
-    if (denom === 0) denom = 0.001;
-    this.output = (-3 * degreeFlee + 1 * degreeDoNothing + 3 * degreeAttack) / denom;
-
-    if (this.output > 1) {
-      this.state = CHASE;
-      this.speed = { x: this.output, y: this.output };
-      this.show_state = "CHASE";
-    } else if (this.output <= 1 && this.output > 0) {
-      this.show_state = "IDLE";
-      if (this.old_state !== IDLE) {
-        this.state = IDLE;
-        this.patrol_index = 0;
-        for (let i = 0; i < this.patterns.length; i++) {
-          this.Offset_patterns[i].x = Math.round(this.position.x + this.patterns[i].x);
-          this.Offset_patterns[i].y = Math.round(this.position.y + this.patterns[i].y);
-        }
-        this.speed = { x: 1, y: 1 };
-      }
-    } else {
-      this.show_state = "EVADE";
-      this.state = EVADE;
-      this.speed = { x: -1 * this.output, y: -1 * this.output };
-    }
-    this.old_state = this.state;
-  }
-
-  Patrol() {
-    if (this.patrol_index < this.patterns.length) {
-      if (this.position.x !== this.Offset_patterns[this.patrol_index].x || this.position.y !== this.Offset_patterns[this.patrol_index].y) {
-        // X movement
-        if (this.position.x > this.Offset_patterns[this.patrol_index].x) {
-          if (Math.abs(this.position.x - this.Offset_patterns[this.patrol_index].x) >= this.speed.x)
-            this.position.x -= this.speed.x;
-          else
-            this.position.x -= Math.abs(this.position.x - this.Offset_patterns[this.patrol_index].x);
-        } else if (this.position.x < this.Offset_patterns[this.patrol_index].x) {
-          if (Math.abs(this.position.x - this.Offset_patterns[this.patrol_index].x) >= this.speed.x)
-            this.position.x += this.speed.x;
-          else
-            this.position.x += Math.abs(this.position.x - this.Offset_patterns[this.patrol_index].x);
-        }
-        // Y movement
-        if (this.position.y > this.Offset_patterns[this.patrol_index].y) {
-          if (Math.abs(this.position.y - this.Offset_patterns[this.patrol_index].y) >= this.speed.y)
-            this.position.y -= this.speed.y;
-          else
-            this.position.y -= Math.abs(this.position.y - this.Offset_patterns[this.patrol_index].y);
-        } else if (this.position.y < this.Offset_patterns[this.patrol_index].y) {
-          if (Math.abs(this.position.y - this.Offset_patterns[this.patrol_index].y) >= this.speed.y)
-            this.position.y += this.speed.y;
-          else
-            this.position.y += Math.abs(this.position.y - this.Offset_patterns[this.patrol_index].y);
-        }
-      } else {
-        this.patrol_index++;
-      }
-    } else {
-      this.patrol_index = 0;
+  // Y-axis labels
+  ctx.fillStyle = '#888';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'right';
+  for (let y = 0; y <= 1; y += 0.25) {
+    const py = padT + gh - y * gh;
+    ctx.fillText(y.toFixed(2), padL - 4, py + 3);
+    if (y > 0) {
+      ctx.strokeStyle = '#2a2a3a';
+      ctx.beginPath(); ctx.moveTo(padL, py); ctx.lineTo(padL + gw, py); ctx.stroke();
     }
   }
 
-  basicChasing() {
-    if (this.position.x > this.player_position.x) {
-      if (Math.abs(this.position.x - this.player_position.x) >= this.speed.x)
-        this.position.x -= this.speed.x;
-      else
-        this.position.x -= Math.abs(this.position.x - this.player_position.x);
-    } else if (this.position.x < this.player_position.x) {
-      if (Math.abs(this.position.x - this.player_position.x) >= this.speed.x)
-        this.position.x += this.speed.x;
-      else
-        this.position.x += Math.abs(this.position.x - this.player_position.x);
-    }
-    if (this.position.y > this.player_position.y) {
-      if (Math.abs(this.position.y - this.player_position.y) >= this.speed.y)
-        this.position.y -= this.speed.y;
-      else
-        this.position.y -= Math.abs(this.position.y - this.player_position.y);
-    } else if (this.position.y < this.player_position.y) {
-      if (Math.abs(this.position.y - this.player_position.y) >= this.speed.y)
-        this.position.y += this.speed.y;
-      else
-        this.position.y += Math.abs(this.position.y - this.player_position.y);
-    }
+  // X-axis ticks
+  ctx.textAlign = 'center';
+  for (let x = 0; x <= xMax; x += xMax / 5) {
+    const px = padL + (x / xMax) * gw;
+    ctx.fillStyle = '#666';
+    ctx.fillText(Math.round(x), px, padT + gh + 14);
+    ctx.strokeStyle = '#1a1a2a';
+    ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT + gh); ctx.stroke();
   }
 
-  basicEvading() {
-    if (this.position.x > this.player_position.x) {
-      if (Math.abs(this.position.x - this.player_position.x) >= this.speed.x)
-        this.position.x += this.speed.x;
-      else
-        this.position.x += Math.abs(this.position.x - this.player_position.x);
-    } else if (this.position.x < this.player_position.x) {
-      if (Math.abs(this.position.x - this.player_position.x) >= this.speed.x)
-        this.position.x -= this.speed.x;
-      else
-        this.position.x -= Math.abs(this.position.x - this.player_position.x);
+  // Draw each membership curve
+  const steps = 200;
+  defs.forEach(def => {
+    ctx.beginPath();
+    ctx.strokeStyle = def.color;
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= steps; i++) {
+      const xv = (i / steps) * xMax;
+      const yv = def.fn(xv);
+      const px = padL + (i / steps) * gw;
+      const py = padT + gh - yv * gh;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
-    if (this.position.y > this.player_position.y) {
-      if (Math.abs(this.position.y - this.player_position.y) >= this.speed.y)
-        this.position.y += this.speed.y;
-      else
-        this.position.y += Math.abs(this.position.y - this.player_position.y);
-    } else if (this.position.y < this.player_position.y) {
-      if (Math.abs(this.position.y - this.player_position.y) >= this.speed.y)
-        this.position.y -= this.speed.y;
-      else
-        this.position.y -= Math.abs(this.position.y - this.player_position.y);
-    }
-  }
+    ctx.stroke();
 
-  Respawn() {
-    this.position.x = Math.random() * this.vpW;
-    this.position.y = Math.random() * this.vpH;
-    this.state = IDLE;
-    this.show_state = "IDLE";
-    this.patrol_index = 0;
-    for (let i = 0; i < this.patterns.length; i++) {
-      this.Offset_patterns[i] = { x: this.position.x + this.patterns[i].x, y: this.position.y + this.patterns[i].y };
-    }
+    // Fill under curve
+    ctx.fillStyle = def.color + '15';
+    ctx.lineTo(padL + gw, padT + gh);
+    ctx.lineTo(padL, padT + gh);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // Current value vertical line
+  if (currentValue !== null && currentValue !== undefined) {
+    const cx = padL + (currentValue / xMax) * gw;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(cx, padT); ctx.lineTo(cx, padT + gh); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dots on curves
+    ctx.fillStyle = '#fff';
+    defs.forEach(def => {
+      const yv = def.fn(currentValue);
+      const py = padT + gh - yv * gh;
+      ctx.beginPath();
+      ctx.arc(cx, py, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = def.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Value label
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(currentValue.toFixed(1), cx, padT - 2);
   }
 }
 
-// === Game1.js ===
+// ========== INFERENCE PANEL ==========
+function drawInference(data) {
+  const c = document.getElementById('inference');
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const rules = [
+    { name: 'Attack',     weight: data.degreeAttack,     coeff: 3,  color: '#ff4444' },
+    { name: 'DoNothing',  weight: data.degreeDoNothing,   coeff: 1,  color: '#44aaff' },
+    { name: 'Flee',       weight: data.degreeFlee,        coeff: -3, color: '#44ff44' }
+  ];
+
+  const barH = 28, gap = 12, startY = 16;
+  const barMaxW = 350;
+
+  // Title area
+  ctx.fillStyle = '#aaa';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'left';
+
+  // Membership degrees
+  ctx.fillText('INPUT DEGREES:', 10, startY + 6);
+  const inputs = [
+    ['Melee', data.degreeMelee, '#ff6666'],
+    ['OutOfRange', data.degreeOutOfRange, '#44aaff'],
+    ['Uninjured', data.degreeUninjured, '#22ffaa'],
+    ['Hard', data.degreeHard, '#ff4444']
+  ];
+  inputs.forEach((inp, i) => {
+    const x = 10 + i * 140;
+    ctx.fillStyle = inp[2];
+    ctx.fillRect(x, startY + 14, inp[1] * 120, 10);
+    ctx.strokeStyle = '#555';
+    ctx.strokeRect(x, startY + 14, 120, 10);
+    ctx.fillStyle = '#ccc';
+    ctx.fillText(`${inp[0]}: ${inp[1].toFixed(3)}`, x + 125, startY + 23);
+  });
+
+  // Rules
+  let ry = startY + 44;
+  ctx.fillStyle = '#aaa';
+  ctx.fillText('RULE DEGREES & WEIGHTS:', 10, ry);
+  ry += 14;
+
+  rules.forEach((rule, i) => {
+    const y = ry + i * (barH + gap);
+    // Label
+    ctx.fillStyle = rule.color;
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(rule.name, 10, y + 18);
+    ctx.fillStyle = '#888';
+    ctx.font = '11px monospace';
+    ctx.fillText(`× ${rule.coeff}`, 100, y + 18);
+
+    // Weight bar
+    const bw = rule.weight * barMaxW;
+    ctx.fillStyle = rule.color + '40';
+    ctx.fillRect(130, y, bw, barH);
+    ctx.fillStyle = rule.color;
+    ctx.fillRect(130, y, bw, barH);
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(130, y, bw, barH);
+    ctx.globalAlpha = 1.0;
+
+    // Weight value
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`μ = ${rule.weight.toFixed(4)}`, 130 + bw + 8, y + 18);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '11px monospace';
+    ctx.fillText(`→ weighted: ${(rule.weight * rule.coeff).toFixed(4)}`, 130 + bw + 8 + 130, y + 18);
+  });
+
+  // Output
+  const outY = ry + rules.length * (barH + gap) + 10;
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Sugeno Output = (${rules.map(r => `${r.coeff}×μ${r.name}`).join(' + ')}) / sum`, 10, outY);
+
+  const outputColor = data.output > 1 ? '#ff4444' : data.output > 0 ? '#44aaff' : '#44ff44';
+  const stateStr = data.output > 1 ? 'CHASE' : data.output > 0 ? 'IDLE' : 'EVADE';
+
+  ctx.fillStyle = outputColor;
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText(`= ${data.output.toFixed(4)}`, 10, outY + 28);
+
+  ctx.fillStyle = '#333';
+  ctx.fillRect(220, outY + 8, 100, 28);
+  ctx.fillStyle = outputColor;
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText(`→ ${stateStr}`, 225, outY + 28);
+
+  // Barbell visualization of output on number line
+  const numY = outY + 48;
+  const numW = 600, numX = 30;
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(numX, numY); ctx.lineTo(numX + numW, numY); ctx.stroke();
+
+  // Range segments
+  // EVADE: [-3, 0], IDLE: [0, 1], CHASE: [1, ~3]
+  const minV = -3, maxV = 3;
+  const mapX = v => numX + ((v - minV) / (maxV - minV)) * numW;
+
+  // EVADE region
+  ctx.fillStyle = '#44ff4420';
+  ctx.fillRect(mapX(minV), numY - 10, mapX(0) - mapX(minV), 20);
+  // IDLE region
+  ctx.fillStyle = '#44aaff20';
+  ctx.fillRect(mapX(0), numY - 10, mapX(1) - mapX(0), 20);
+  // CHASE region
+  ctx.fillStyle = '#ff444420';
+  ctx.fillRect(mapX(1), numY - 10, mapX(maxV) - mapX(1), 20);
+
+  // Tick marks
+  ctx.fillStyle = '#888';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  for (let v = minV; v <= maxV; v++) {
+    const x = mapX(v);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(x - 0.5, numY - 6, 1, 12);
+    ctx.fillStyle = '#888';
+    ctx.fillText(v, x, numY + 18);
+  }
+  ctx.fillText('EVADE', mapX(-1.5), numY - 14);
+  ctx.fillText('IDLE', mapX(0.5), numY - 14);
+  ctx.fillText('CHASE', mapX(2), numY - 14);
+
+  // Current output marker
+  const markerX = mapX(Math.max(minV, Math.min(maxV, data.output)));
+  ctx.fillStyle = outputColor;
+  ctx.beginPath();
+  ctx.moveTo(markerX, numY - 12);
+  ctx.lineTo(markerX - 6, numY - 20);
+  ctx.lineTo(markerX + 6, numY - 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText(data.output.toFixed(3), markerX, numY - 24);
+}
+
+// ========== GAME ==========
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const W = 1024, H = 768;
+const W = 720, H = 540;
 
 let player_Position = { x: Math.random() * W, y: Math.random() * H };
 let player_Speed = { x: 6, y: 6 };
 let player_power_up = false;
 let monster_Speed = { x: 1, y: 1 };
 let monster_Position = { x: Math.random() * W, y: Math.random() * H };
-let myMonster = new Monster(monster_Position, monster_Speed, W, H);
 
-const keys = {};
-const keyDown = {};
+// Monster state
+const monster = {
+  state: 0,
+  position: { x: monster_Position.x, y: monster_Position.y },
+  speed: { x: 1, y: 1 },
+  detected_distance: 0,
+  show_state: "IDLE",
+  HP: 160, Level: 1, output: 0,
+  old_state: 0,
+  player_position: { x: 0, y: 0 },
+  player_power_up: false,
+  patrol_index: 0,
+  patterns: [{ x: 50, y: 0 }, { x: 50, y: -50 }, { x: 0, y: -50 }, { x: 0, y: 0 }],
+  Offset_patterns: [],
+  vpW: W, vpH: H
+};
+monster.Offset_patterns = monster.patterns.map(p => ({ x: monster.position.x + p.x, y: monster.position.y + p.y }));
 
-document.addEventListener('keydown', e => {
-  keys[e.key] = true;
-  if (!keyDown[e.key]) {
-    keyDown[e.key] = true;
-    handleKeyPress(e.key);
+// Fuzzy state for display
+let fuzzyData = { degreeMelee: 0, degreeOutOfRange: 0, degreeUninjured: 0, degreeHard: 0,
+  degreeAttack: 0, degreeDoNothing: 0, degreeFlee: 0, output: 0 };
+
+function monsterUpdate() {
+  const pp = monster.player_position;
+  const dx = pp.x - monster.position.x;
+  const dy = pp.y - monster.position.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  monster.detected_distance = dist;
+
+  // Die if out of bounds
+  if (monster.position.x < 0 || monster.position.x > monster.vpW) { monster.state = 3; monster.show_state = "DIE"; }
+  if (monster.position.y < 0 || monster.position.y > monster.vpH) { monster.state = 3; monster.show_state = "DIE"; }
+  if (monster.state === 3) { respawn(); return; }
+
+  // Fuzzy inference
+  const dm = fl.FuzzyReverseGrade(dist, 0, 400);
+  const du = fl.FuzzyGrade(monster.HP, 140, 160);
+  const dh = fl.FuzzyGrade(monster.Level, 50, 60);
+  const dor = fl.FuzzyGrade(dist, 320, 400);
+  const dAtt = Math.min(Math.min(dm, du), 1 - dh);
+  const dDn = Math.min(1 - dm, du);
+  const dFl = Math.min(1 - dor, 1 - du);
+
+  let denom = dFl + dDn + dAtt;
+  if (denom === 0) denom = 0.001;
+  const out = (-3 * dFl + 1 * dDn + 3 * dAtt) / denom;
+  monster.output = out;
+
+  fuzzyData = { degreeMelee: dm, degreeOutOfRange: dor, degreeUninjured: du, degreeHard: dh,
+    degreeAttack: dAtt, degreeDoNothing: dDn, degreeFlee: dFl, output: out };
+
+  // State transition
+  if (out > 1) {
+    monster.state = 1; monster.show_state = "CHASE";
+    monster.speed = { x: out, y: out };
+  } else if (out > 0) {
+    if (monster.old_state !== 0) {
+      monster.state = 0; monster.show_state = "IDLE"; monster.patrol_index = 0;
+      for (let i = 0; i < monster.patterns.length; i++) {
+        monster.Offset_patterns[i] = { x: Math.round(monster.position.x + monster.patterns[i].x), y: Math.round(monster.position.y + monster.patterns[i].y) };
+      }
+      monster.speed = { x: 1, y: 1 };
+    } else {
+      monster.show_state = "IDLE";
+    }
+  } else {
+    monster.state = 2; monster.show_state = "EVADE";
+    monster.speed = { x: -1 * out, y: -1 * out };
   }
-  e.preventDefault();
-});
-document.addEventListener('keyup', e => {
-  keys[e.key] = false;
-  keyDown[e.key] = false;
-  e.preventDefault();
-});
+  monster.old_state = monster.state;
 
-function handleKeyPress(key) {
-  if (key === '1') {
-    player_power_up = !player_power_up;
-    myMonster.Level++;
-  } else if (key === '2') {
-    player_power_up = !player_power_up;
-    myMonster.Level--;
-  } else if (key === '3') {
-    myMonster.HP -= 1;
-  } else if (key === '4') {
-    myMonster.HP += 1;
+  // Act
+  if (monster.state === 0) patrol();
+  else if (monster.state === 1) chase();
+  else if (monster.state === 2) evade();
+}
+
+function moveToward(pos, target, spd) {
+  ['x', 'y'].forEach(axis => {
+    if (Math.abs(pos[axis] - target[axis]) >= spd[axis]) {
+      pos[axis] += pos[axis] < target[axis] ? spd[axis] : -spd[axis];
+    } else {
+      pos[axis] = target[axis];
+    }
+  });
+}
+
+function patrol() {
+  const pi = monster.patrol_index;
+  if (pi < monster.patterns.length) {
+    const t = monster.Offset_patterns[pi];
+    if (monster.position.x !== t.x || monster.position.y !== t.y) {
+      moveToward(monster.position, t, monster.speed);
+    } else {
+      monster.patrol_index++;
+    }
+  } else {
+    monster.patrol_index = 0;
   }
 }
 
+function chase() { moveToward(monster.position, monster.player_position, monster.speed); }
+function evade() {
+  const away = { x: 2 * monster.position.x - monster.player_position.x, y: 2 * monster.position.y - monster.player_position.y };
+  moveToward(monster.position, away, monster.speed);
+}
+
+function respawn() {
+  monster.position = { x: Math.random() * monster.vpW, y: Math.random() * monster.vpH };
+  monster.state = 0; monster.show_state = "IDLE"; monster.patrol_index = 0;
+  for (let i = 0; i < monster.patterns.length; i++) {
+    monster.Offset_patterns[i] = { x: monster.position.x + monster.patterns[i].x, y: monster.position.y + monster.patterns[i].y };
+  }
+}
+
+// ========== INPUT ==========
+const keys = {};
+document.addEventListener('keydown', e => {
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','1','2','3','4'].includes(e.key)) e.preventDefault();
+  if (['1','2','3','4'].includes(e.key) && !keys[e.key]) handleKey(e.key);
+  keys[e.key] = true;
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function handleKey(k) {
+  if (k === '1') { player_power_up = !player_power_up; monster.Level++; }
+  else if (k === '2') { player_power_up = !player_power_up; monster.Level--; }
+  else if (k === '3') { monster.HP -= 1; }
+  else if (k === '4') { monster.HP += 1; }
+}
+
+// ========== UPDATE & DRAW ==========
+const stateColors = { IDLE: '#44aaff', CHASE: '#ff4444', EVADE: '#44ff44', DIE: '#888888' };
+
 function update() {
-  // Player movement
   if (keys['ArrowLeft'])  player_Position.x -= player_Speed.x;
   if (keys['ArrowRight']) player_Position.x += player_Speed.x;
   if (keys['ArrowUp'])    player_Position.y -= player_Speed.y;
   if (keys['ArrowDown'])  player_Position.y += player_Speed.y;
 
-  myMonster.Update(player_Position, player_Speed, player_power_up);
+  monster.player_position = player_Position;
+  monster.player_power_up = player_power_up;
+  monsterUpdate();
 
-  // Wrap player
-  if (player_Position.x < 0 || player_Position.x > W)
+  if (player_Position.x < 0 || player_Position.x > W || player_Position.y < 0 || player_Position.y > H) {
     player_Position = { x: Math.random() * W, y: Math.random() * H };
-  if (player_Position.y < 0 || player_Position.y > H)
-    player_Position = { x: Math.random() * W, y: Math.random() * H };
+  }
 }
 
-// State color mapping
-const stateColors = {
-  IDLE: '#44aaff',
-  CHASE: '#ff4444',
-  EVADE: '#44ff44',
-  DIE: '#888888'
-};
-
-function draw() {
+function drawGame() {
   ctx.clearRect(0, 0, W, H);
 
-  // Grid lines
-  ctx.strokeStyle = '#333355';
+  // Grid
+  ctx.strokeStyle = '#222244';
   ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 64) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
-  for (let y = 0; y < H; y += 64) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
+  for (let x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-  // Detection range circle
+  // Detection range
   ctx.beginPath();
-  ctx.arc(myMonster.position.x, myMonster.position.y, 400, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,100,0.15)';
+  ctx.arc(monster.position.x, monster.position.y, 400, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,100,0.08)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
   // Detection line
   ctx.beginPath();
-  ctx.moveTo(myMonster.position.x, myMonster.position.y);
+  ctx.moveTo(monster.position.x, monster.position.y);
   ctx.lineTo(player_Position.x, player_Position.y);
-  ctx.strokeStyle = 'rgba(255,255,100,0.3)';
+  ctx.strokeStyle = 'rgba(255,255,100,0.25)';
   ctx.setLineDash([5, 5]);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Player (mouse) 🐭
+  // Player mouse
   ctx.save();
   ctx.translate(player_Position.x, player_Position.y);
-  // Body
   ctx.fillStyle = player_power_up ? '#ff6666' : '#cccccc';
-  ctx.beginPath();
-  ctx.arc(0, 0, 14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#666';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // Ears
-  ctx.fillStyle = player_power_up ? '#ff8888' : '#dddddd';
-  ctx.beginPath(); ctx.arc(-8, -14, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(8, -14, 6, 0, Math.PI * 2); ctx.fill();
-  // Eyes
+  ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#666'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = player_power_up ? '#ff8888' : '#ddd';
+  ctx.beginPath(); ctx.arc(-7, -12, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(7, -12, 5, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#333';
-  ctx.beginPath(); ctx.arc(-4, -2, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(4, -2, 2, 0, Math.PI * 2); ctx.fill();
-  // Nose
+  ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(3, -2, 2, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#ff9999';
   ctx.beginPath(); ctx.arc(0, 2, 2, 0, Math.PI * 2); ctx.fill();
-  // Tail
-  ctx.strokeStyle = '#999';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, 14);
-  ctx.bezierCurveTo(20, 20, 20, 30, 10, 35);
-  ctx.stroke();
+  ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, 12); ctx.bezierCurveTo(16, 16, 16, 24, 8, 28); ctx.stroke();
   ctx.restore();
-
-  // Power-up glow
   if (player_power_up) {
-    ctx.beginPath();
-    ctx.arc(player_Position.x, player_Position.y, 22, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,100,100,0.5)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(player_Position.x, player_Position.y, 18, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,100,100,0.4)'; ctx.lineWidth = 2; ctx.stroke();
   }
 
-  // Monster (cat) 🐱
-  let stateCol = stateColors[myMonster.show_state] || '#ffffff';
+  // Monster cat
+  const sc = stateColors[monster.show_state] || '#fff';
   ctx.save();
-  ctx.translate(myMonster.position.x, myMonster.position.y);
-  // Body
-  ctx.fillStyle = stateCol;
-  ctx.beginPath();
-  ctx.arc(0, 0, 16, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // Ears (triangles)
-  ctx.fillStyle = stateCol;
-  ctx.beginPath(); ctx.moveTo(-12, -10); ctx.lineTo(-16, -24); ctx.lineTo(-4, -14); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(12, -10); ctx.lineTo(16, -24); ctx.lineTo(4, -14); ctx.closePath(); ctx.fill();
+  ctx.translate(monster.position.x, monster.position.y);
+  ctx.fillStyle = sc;
+  ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  // Ears
+  ctx.fillStyle = sc;
+  ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(-13, -20); ctx.lineTo(-3, -12); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(10, -8); ctx.lineTo(13, -20); ctx.lineTo(3, -12); ctx.closePath(); ctx.fill();
   // Eyes
   ctx.fillStyle = '#111';
-  ctx.beginPath(); ctx.arc(-5, -3, 2.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(5, -3, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-4, -2, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(4, -2, 2, 0, Math.PI * 2); ctx.fill();
   // Whiskers
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-6, 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-16, 4); ctx.lineTo(-6, 4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(6, 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(16, 4); ctx.lineTo(6, 4); ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-5, 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-14, 4); ctx.lineTo(-5, 3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(5, 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14, 4); ctx.lineTo(5, 3); ctx.stroke();
   ctx.restore();
 
   // HUD
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(10, 10, 380, 100);
-  ctx.strokeStyle = '#4a4a6a';
-  ctx.strokeRect(10, 10, 380, 100);
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(8, 8, 340, 62);
+  ctx.strokeStyle = '#4a4a6a'; ctx.strokeRect(8, 8, 340, 62);
+  ctx.fillStyle = '#fff'; ctx.font = '12px monospace'; ctx.textAlign = 'left';
+  ctx.fillText(`Player (${Math.round(player_Position.x)}, ${Math.round(player_Position.y)})  Power: ${player_power_up}`, 16, 26);
+  ctx.fillText(`Monster (${Math.round(monster.position.x)}, ${Math.round(monster.position.y)})  Dist: ${monster.detected_distance.toFixed(1)}`, 16, 42);
+  ctx.fillText(`HP: ${monster.HP}  Level: ${monster.Level}  Output: ${monster.output.toFixed(4)}`, 16, 58);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '13px monospace';
-  ctx.fillText('Player Pos: (' + Math.round(player_Position.x) + ', ' + Math.round(player_Position.y) + ')  Speed: ' + player_Speed.x + '  Power: ' + player_power_up, 18, 30);
-  ctx.fillText('Monster Pos: (' + Math.round(myMonster.position.x) + ', ' + Math.round(myMonster.position.y) + ')  Speed: ' + myMonster.speed.x.toFixed(2), 18, 50);
-  ctx.fillText('Detection Dist: ' + myMonster.detected_distance.toFixed(1) + '  FL Output: ' + myMonster.output.toFixed(4), 18, 70);
-  ctx.fillText('Level: ' + myMonster.Level + '  HP: ' + myMonster.HP + '  State: ' + myMonster.show_state, 18, 90);
-
-  // State indicator
-  ctx.fillStyle = stateColors[myMonster.show_state] || '#fff';
-  ctx.fillRect(W - 160, 10, 150, 26);
-  ctx.fillStyle = '#000';
-  ctx.font = 'bold 14px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('State: ' + myMonster.show_state, W - 85, 28);
+  // State badge
+  ctx.fillStyle = '#333';
+  ctx.fillRect(W - 100, 8, 92, 24);
+  ctx.fillStyle = sc; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(monster.show_state, W - 54, 25);
   ctx.textAlign = 'left';
-
-  // Legend
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(W - 160, 44, 150, 76);
-  const legend = [
-    ['CHASE', '#ff4444', 'output > 1'],
-    ['IDLE',  '#44aaff', '0 < output ≤ 1'],
-    ['EVADE', '#44ff44', 'output ≤ 0'],
-    ['DIE',   '#888888', 'out of bounds']
-  ];
-  ctx.font = '11px monospace';
-  legend.forEach((l, i) => {
-    ctx.fillStyle = l[1];
-    ctx.fillRect(W - 155, 52 + i * 17, 10, 10);
-    ctx.fillStyle = '#ccc';
-    ctx.fillText(l[0] + '  ' + l[2], W - 140, 62 + i * 17);
-  });
 }
 
-function gameLoop() {
+function drawGraphs() {
+  drawMembershipGraph('graphRange', rangeDefs, 400, monster.detected_distance);
+  drawMembershipGraph('graphHealth', healthDefs, 160, monster.HP);
+  drawMembershipGraph('graphRating', ratingDefs, 60, monster.Level);
+  drawInference(fuzzyData);
+}
+
+function loop() {
   update();
-  draw();
-  requestAnimationFrame(gameLoop);
+  drawGame();
+  drawGraphs();
+  requestAnimationFrame(loop);
 }
-
-gameLoop();
+loop();
 </script>
 </body>
 </html>
