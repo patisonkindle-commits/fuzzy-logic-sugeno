@@ -392,7 +392,7 @@ function monsterUpdate(){
   fd={dMelee:dm,dOR:dor,dUn:du,dHard:dh,dAtt,dDn,dFl,output:out};
 
   if(out>1){
-    mon.state=1;mon.showState='CHASE';mon.spd={x:out,y:out};
+    mon.state=1;mon.showState='CHASE';mon.spd={x:out*0.5,y:out*0.5};
   }else if(out>0){
     if(mon.oldState!==0){
       mon.state=0;mon.showState='IDLE';mon.patrolIdx=0;
@@ -400,7 +400,7 @@ function monsterUpdate(){
       mon.spd={x:1,y:1};
     }
   }else{
-    mon.state=2;mon.showState='EVADE';mon.spd={x:-1*out,y:-1*out};
+    mon.state=2;mon.showState='EVADE';mon.spd={x:-1*out*0.5,y:-1*out*0.5};
   }
   mon.oldState=mon.state;
 
