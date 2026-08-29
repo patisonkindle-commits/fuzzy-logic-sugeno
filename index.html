@@ -112,8 +112,12 @@
 
   /* Action buttons (mobile) */
   #touch-actions {
-    display: flex; position: fixed; bottom: 24px; right: 20px; z-index: 30;
+    display: none; position: fixed; bottom: 24px; right: 20px; z-index: 30;
     gap: 8px;
+  }
+  @media (pointer: coarse), (max-width: 768px) {
+    #touch-actions { display: flex; }
+    #toggleInference { bottom: 80px !important; }
   }
   .action-btn {
     width: 44px; height: 44px; border-radius: 8px; border: 2px solid rgba(110,198,255,0.3);
