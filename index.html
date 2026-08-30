@@ -18,13 +18,6 @@
   #app.sidebar-collapsed { grid-template-columns: 1fr 0px; }
   #app.inference-collapsed { grid-template-rows: 1fr 0px; }
   #app.sidebar-collapsed.inference-collapsed { grid-template-rows: 1fr 0px; }
-  @media (max-width: 768px) {
-    #app { grid-template-columns: 1fr !important; }
-    #app.sidebar-collapsed { grid-template-columns: 1fr !important; }
-    #sidebar { position: fixed; right: 0; top: 0; bottom: 0; width: 280px; z-index: 50; transform: translateX(0); transition: transform 0.2s; }
-    #app.sidebar-collapsed #sidebar { transform: translateX(100%); width: 280px; }
-    #toggleSidebar { right: 8px !important; }
-  }
 
   /* Game area */
   #game-wrap { position: relative; overflow: hidden; background: #0a0a1a; }
@@ -70,9 +63,8 @@
     display: flex; justify-content: space-between; padding: 8px 12px;
   }
   .hud-box {
-    background: rgba(10,10,26,0.85); border: 1px solid var(--border); border-radius: 4px;
+    background: rgba(10,10,26,0.75); border: 1px solid var(--border); border-radius: 4px;
     padding: 6px 10px; font-size: 11px; line-height: 1.5; backdrop-filter: blur(4px);
-    pointer-events: auto; white-space: nowrap;
   }
   .hud-box .val { color: #fff; }
   .hud-box .lbl { color: var(--dim); }
@@ -84,14 +76,6 @@
   .state-IDLE { background: var(--blue); color: #fff; }
   .state-EVADE { background: var(--green); color: #000; }
   .state-DIE { background: #666; color: #fff; }
-  .hud-btn {
-    display: inline-block; width: 18px; height: 16px; line-height: 14px;
-    border: 1px solid var(--border); border-radius: 3px; background: rgba(19,19,42,0.9);
-    color: var(--accent); font-size: 12px; font-weight: bold; cursor: pointer;
-    text-align: center; padding: 0; vertical-align: middle; margin: 0 1px;
-    touch-action: manipulation; user-select: none;
-  }
-  .hud-btn:active { background: rgba(110,198,255,0.3); }
 
   /* Controls hint */
   #ctrl-hint {
@@ -100,40 +84,6 @@
     padding: 4px 8px; border-radius: 3px;
   }
   kbd { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 2px; padding: 0 3px; font-size: 10px; }
-
-  /* Touch D-pad */
-  #touch-pad {
-    display: grid; position: fixed; bottom: 60px; left: 20px; z-index: 30;
-    grid-template-columns: 48px 48px 48px; grid-template-rows: 48px 48px 48px;
-    gap: 4px;
-  }
-  .touch-btn {
-    width: 48px; height: 48px; border-radius: 10px; border: 2px solid rgba(110,198,255,0.3);
-    background: rgba(19,19,42,0.85); color: var(--accent); font-size: 20px; font-weight: bold;
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-    user-select: none; -webkit-user-select: none; touch-action: manipulation;
-  }
-  .touch-btn:active { background: rgba(110,198,255,0.3); border-color: var(--accent); }
-  #touch-w { grid-column: 2; grid-row: 1; }
-  #touch-a { grid-column: 1; grid-row: 2; }
-  #touch-s { grid-column: 2; grid-row: 3; }
-  #touch-d { grid-column: 3; grid-row: 2; }
-
-  /* Action buttons (mobile) */
-  #touch-actions {
-    display: none; position: fixed; bottom: 24px; right: 20px; z-index: 30;
-    gap: 8px;
-  }
-  @media (pointer: coarse), (max-width: 768px) {
-    #touch-actions { display: flex; }
-    #toggleInference { bottom: 80px !important; }
-  }
-  .action-btn {
-    width: 44px; height: 44px; border-radius: 8px; border: 2px solid rgba(110,198,255,0.3);
-    background: rgba(19,19,42,0.85); color: var(--dim); font-size: 15px; font-weight: bold;
-    font-family: inherit; cursor: pointer; user-select: none; touch-action: manipulation;
-  }
-  .action-btn:active { background: rgba(110,198,255,0.3); color: var(--accent); border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -147,26 +97,9 @@
       <div class="hud-box" id="hudRight"></div>
     </div>
     <div id="ctrl-hint"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp; <kbd>1</kbd> Power↑Lv↑ &nbsp; <kbd>2</kbd> Power↓Lv↓ &nbsp; <kbd>3</kbd> HP− &nbsp; <kbd>4</kbd> HP+</div>
-    <button class="toggle-btn" id="toggleSidebar">▶ Panels</button>
+    <button class="toggle-btn" id="toggleSidebar">◀ Panels</button>
     <button class="toggle-btn" id="toggleInference">▲ Rules</button>
   </div>
-
-  <!-- Touch D-pad (mobile) -->
-  <div id="touch-pad">
-    <div class="touch-btn" id="touch-w">W</div>
-    <div class="touch-btn" id="touch-a">A</div>
-    <div class="touch-btn" id="touch-s">S</div>
-    <div class="touch-btn" id="touch-d">D</div>
-  </div>
-  <div id="touch-actions">
-    <button class="action-btn" data-key="1">1</button>
-    <button class="action-btn" data-key="2">2</button>
-    <button class="action-btn" data-key="3">3</button>
-    <button class="action-btn" data-key="4">4</button>
-  </div>
-
-  <!-- Floating live values (always visible) -->
-  <div id="liveValues" style="position:fixed;top:50px;left:12px;z-index:25;background:rgba(10,10,26,0.88);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:10px;line-height:1.7;pointer-events:none;"></div>
 
   <!-- Right sidebar: membership graphs -->
   <div id="sidebar">
@@ -184,6 +117,10 @@
       <h3>Rating</h3>
       <canvas id="gRating" width="340" height="110"></canvas>
       <div class="side-legend" id="lRating"></div>
+    </div>
+    <div class="side-panel" style="flex:1; min-height:80px;">
+      <h3>Fuzzy Values</h3>
+      <div id="liveValues" style="font-size:10px; line-height:1.7;"></div>
     </div>
   </div>
 
@@ -377,10 +314,6 @@ function resize() {
 }
 resize();
 window.addEventListener('resize', resize);
-// Sidebar collapsed by default (all devices)
-document.getElementById('app').classList.add('sidebar-collapsed');
-// Inference collapsed by default
-document.getElementById('app').classList.add('inference-collapsed');
 
 // Entities
 let player = { x: Math.random()*800+50, y: Math.random()*500+50 };
@@ -399,10 +332,6 @@ mon.offsets = mon.patterns.map(p=>({x:mon.x+p.x, y:mon.y+p.y}));
 
 let fd = { dMelee:0, dOR:0, dUn:0, dHard:0, dAtt:0, dDn:0, dFl:0, output:0 };
 
-// Player combat
-let playerAtk = { cooldown: 0, damage: 8, range: 60, lastHit: 0 };
-let attackEffects = []; // {x,y,timer}
-
 // Input
 const keys={};
 document.addEventListener('keydown',e=>{
@@ -411,20 +340,6 @@ document.addEventListener('keydown',e=>{
   keys[e.key]=true;
 });
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
-
-// Touch D-pad handlers
-const touchMap = {'touch-w':'w','touch-a':'a','touch-s':'s','touch-d':'d'};
-Object.entries(touchMap).forEach(([id,key]) => {
-  const el = document.getElementById(id);
-  el.addEventListener('touchstart', e=>{e.preventDefault();keys[key]=true;},{passive:false});
-  el.addEventListener('touchend', e=>{e.preventDefault();keys[key]=false;},{passive:false});
-  el.addEventListener('touchcancel', e=>{keys[key]=false;});
-});
-// Action buttons (1-4)
-document.querySelectorAll('.action-btn').forEach(btn => {
-  btn.addEventListener('touchstart', e=>{e.preventDefault();handleKey(btn.dataset.key);},{passive:false});
-  btn.addEventListener('click', e=>{handleKey(btn.dataset.key);});
-});
 
 function handleKey(k){
   if(k==='1'){powerUp=!powerUp;mon.level++;}
@@ -435,15 +350,11 @@ function handleKey(k){
 
 // Toggle buttons
 document.getElementById('toggleSidebar').addEventListener('click',()=>{
-  const app=document.getElementById('app');
-  app.classList.toggle('sidebar-collapsed');
-  document.getElementById('toggleSidebar').textContent=app.classList.contains('sidebar-collapsed')?'▶ Panels':'◀ Panels';
+  document.getElementById('app').classList.toggle('sidebar-collapsed');
   setTimeout(resize,250);
 });
 document.getElementById('toggleInference').addEventListener('click',()=>{
-  const app=document.getElementById('app');
-  app.classList.toggle('inference-collapsed');
-  document.getElementById('toggleInference').textContent=app.classList.contains('inference-collapsed')?'▲ Rules':'▼ Rules';
+  document.getElementById('app').classList.toggle('inference-collapsed');
   setTimeout(resize,250);
 });
 
@@ -578,35 +489,13 @@ function drawGame(){
   ctx.beginPath();ctx.moveTo(16,4);ctx.lineTo(6,3);ctx.stroke();
   ctx.restore();
 
-  // Attack range indicator
-  if(mon.dist <= playerAtk.range) {
-    ctx.beginPath();ctx.arc(player.x,player.y,playerAtk.range,0,Math.PI*2);
-    ctx.strokeStyle='rgba(255,255,100,0.25)';ctx.lineWidth=1.5;ctx.stroke();
-  }
-  // Attack cooldown indicator
-  if(playerAtk.lastHit > 0) {
-    playerAtk.lastHit--;
-    const pct = 1 - playerAtk.cooldown/30;
-    ctx.beginPath();ctx.arc(player.x,player.y,22,-Math.PI/2,-Math.PI/2+Math.PI*2*pct);
-    ctx.strokeStyle='rgba(255,80,80,0.6)';ctx.lineWidth=2.5;ctx.stroke();
-  }
-  // Damage numbers
-  attackEffects.forEach(e => {
-    ctx.globalAlpha = e.timer/20;
-    ctx.fillStyle='#ff4444';ctx.font='bold 12px monospace';ctx.textAlign='center';
-    ctx.fillText(`-${e.dmg}`, e.x, e.y);
-    ctx.globalAlpha=1;
-  });
-
   // HUD
   const hL=document.getElementById('hudLeft');
   hL.innerHTML=`<span class="lbl">Player</span> <span class="val">(${Math.round(player.x)},${Math.round(player.y)})</span> <span class="lbl">Power</span> <span class="val">${powerUp?'ON':'OFF'}</span><br>`+
     `<span class="lbl">Monster</span> <span class="val">(${Math.round(mon.x)},${Math.round(mon.y)})</span> <span class="lbl">Dist</span> <span class="val">${mon.dist.toFixed(1)}</span>`;
 
   const hR=document.getElementById('hudRight');
-  hR.innerHTML=`<span class="lbl">HP</span> <span class="val">${mon.hp}</span> <button class="hud-btn" onclick="handleKey('3')">−</button><button class="hud-btn" onclick="handleKey('4')">+</button> ` +
-    `<span class="lbl">Lv</span> <span class="val">${mon.level}</span> <button class="hud-btn" onclick="handleKey('2')">−</button><button class="hud-btn" onclick="handleKey('1')">+</button> ` +
-    `<span class="lbl">FL</span> <span class="val">${mon.output.toFixed(4)}</span> <span class="state-badge state-${mon.showState}">${mon.showState}</span>${moving?'<span style="color:#4f4;margin-left:6px">●MOVE</span>':''}`;
+  hR.innerHTML=`<span class="lbl">HP</span> <span class="val">${mon.hp}</span> <span class="lbl">Lv</span> <span class="val">${mon.level}</span> <span class="lbl">FL</span> <span class="val">${mon.output.toFixed(4)}</span> <span class="state-badge state-${mon.showState}">${mon.showState}</span>`;
 }
 
 function drawLiveValues(){
@@ -626,31 +515,12 @@ function drawLiveValues(){
 // ========== MAIN LOOP ==========
 function loop(){
   // Player movement
-  const moving = keys['a']||keys['A']||keys['d']||keys['D']||keys['w']||keys['W']||keys['s']||keys['S'];
   if(keys['a']||keys['A'])player.x-=playerSpd.x;
   if(keys['d']||keys['D'])player.x+=playerSpd.x;
   if(keys['w']||keys['W'])player.y-=playerSpd.y;
   if(keys['s']||keys['S'])player.y+=playerSpd.y;
 
   monsterUpdate();
-
-  // Player auto-attack when in range
-  if(playerAtk.cooldown > 0) playerAtk.cooldown--;
-  if(mon.dist <= playerAtk.range && playerAtk.cooldown <= 0) {
-    mon.hp -= playerAtk.damage;
-    playerAtk.cooldown = 30; // ~0.5s at 60fps
-    playerAtk.lastHit = 30;
-    attackEffects.push({x:mon.x, y:mon.y-20, timer:20, dmg:playerAtk.damage});
-    if(mon.hp < 0) mon.hp = 0;
-    if(mon.hp === 0) {
-      // Monster defeated — respawn
-      mon.hp = 160;
-      mon.x = Math.random()*W; mon.y = Math.random()*H;
-      mon.offsets = mon.patterns.map(p=>({x:mon.x+p.x, y:mon.y+p.y}));
-    }
-  }
-  // Update attack effects
-  attackEffects = attackEffects.filter(e => { e.timer--; e.y -= 1; return e.timer > 0; });
 
   if(player.x<-10||player.x>W+10||player.y<-10||player.y>H+10)
     player={x:Math.random()*W,y:Math.random()*H};
