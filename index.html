@@ -332,14 +332,15 @@ mon.offsets = mon.patterns.map(p=>({x:mon.x+p.x, y:mon.y+p.y}));
 
 let fd = { dMelee:0, dOR:0, dUn:0, dHard:0, dAtt:0, dDn:0, dFl:0, output:0 };
 
-// Input
+// Input — use e.code (physical key) for WASD, e.key for numbers
 const keys={};
 document.addEventListener('keydown',e=>{
-  if(['1','2','3','4','w','a','s','d','W','A','S','D'].includes(e.key))e.preventDefault();
+  const k=e.code;
+  if(['Tab','Space','KeyW','KeyA','KeyS','KeyD'].includes(k))e.preventDefault();
   if(['1','2','3','4'].includes(e.key)&&!keys[e.key])handleKey(e.key);
-  keys[e.key]=true;
+  keys[k]=true;
 });
-document.addEventListener('keyup',e=>{keys[e.key]=false;});
+document.addEventListener('keyup',e=>{keys[e.code]=false;});
 
 function handleKey(k){
   if(k==='1'){powerUp=!powerUp;mon.level++;}
@@ -515,10 +516,10 @@ function drawLiveValues(){
 // ========== MAIN LOOP ==========
 function loop(){
   // Player movement
-  if(keys['a']||keys['A'])player.x-=playerSpd.x;
-  if(keys['d']||keys['D'])player.x+=playerSpd.x;
-  if(keys['w']||keys['W'])player.y-=playerSpd.y;
-  if(keys['s']||keys['S'])player.y+=playerSpd.y;
+  if(keys['KeyA'])player.x-=playerSpd.x;
+  if(keys['KeyD'])player.x+=playerSpd.x;
+  if(keys['KeyW'])player.y-=playerSpd.y;
+  if(keys['KeyS'])player.y+=playerSpd.y;
 
   monsterUpdate();
 
