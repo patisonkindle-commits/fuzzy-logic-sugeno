@@ -142,7 +142,7 @@ const fl = {
 
 // ========== MEMBERSHIP DEFS ==========
 const rangeDefs = [
-  { n:'Melee', c:'#ff5555', fn: x => fl.RGrade(x, 0, 400) },
+  { n:'Melee', c:'#ff5555', fn: x => fl.RGrade(x, 0, 160) },
   { n:'Projectile', c:'#ffaa44', fn: x => fl.Trap(x, 80, 160, 320, 400) },
   { n:'OutOfRange', c:'#44aaff', fn: x => fl.Grade(x, 320, 400) }
 ];
@@ -379,7 +379,7 @@ function monsterUpdate(){
   }
 
   // Fuzzy inference
-  const dm=fl.RGrade(mon.dist,0,400);
+  const dm=fl.RGrade(mon.dist,0,160);
   const du=fl.Grade(mon.hp,140,160);
   const dh=fl.Grade(mon.level,50,60);
   const dor=fl.Grade(mon.dist,320,400);
